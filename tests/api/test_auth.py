@@ -1,3 +1,4 @@
+
 """Tests for authentication endpoints"""
 
 import uuid
@@ -232,21 +233,28 @@ class TestProtectedEndpoint:
         # Access protected endpoint
         response = client.post(
             "/api/videos/upload",
-            json={"test": "Mi video de habilidades"},
+            json={
+                "title": "My Video",
+                "file": "AAAAHGZ0eXBtcDR2AAAAAG1wNHZtcDQyaXNvbQAAABhiZWFtAQAAAAEAAAAAAAAAAgA",
+            },
             headers={"Authorization": f"Bearer {token}"},
         )
 
         assert response.status_code == status.HTTP_201_CREATED
         data = response.json()
-        assert "id" in data
+        assert "video_id" in data
         assert "user_id" in data
         assert data["user_id"] == str(user.id)
+        assert uuid.UUID(data["video_id"])
 
     def test_upload_without_token(self, client: TestClient, db):
         """Test accessing protected endpoint without token returns 403"""
         response = client.post(
             "/api/videos/upload",
-            json={"test": "Mi video de habilidades"},
+            json={
+                "title": "My Video",
+                "file": "AAAAHGZ0eXBtcDR2AAAAAG1wNHZtcDQyaXNvbQAAABhiZWFtAQAAAAEAAAAAAAAAAgA",
+            },
         )
 
         assert response.status_code == status.HTTP_403_FORBIDDEN
@@ -255,7 +263,10 @@ class TestProtectedEndpoint:
         """Test accessing protected endpoint with invalid token returns 401"""
         response = client.post(
             "/api/videos/upload",
-            json={"test": "Mi video de habilidades"},
+            json={
+                "title": "My Video",
+                "file": "AAAAHGZ0eXBtcDR2AAAAAG1wNHZtcDQyaXNvbQAAABhiZWFtAQAAAAEAAAAAAAAAAgA",
+            },
             headers={"Authorization": "Bearer invalid-token-12345"},
         )
 
@@ -265,7 +276,10 @@ class TestProtectedEndpoint:
         """Test accessing protected endpoint with malformed auth header"""
         response = client.post(
             "/api/videos/upload",
-            json={"test": "Mi video de habilidades"},
+            json={
+                "title": "My Video",
+                "file": "AAAAHGZ0eXBtcDR2AAAAAG1wNHZtcDQyaXNvbQAAABhiZWFtAQAAAAEAAAAAAAAAAgA",
+            },
             headers={"Authorization": "InvalidFormat token123"},
         )
 
