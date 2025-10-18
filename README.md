@@ -14,7 +14,7 @@ A production-ready FastAPI template with JWT Authentication, PostgreSQL, Celery,
 - ✅ **Poetry** - Modern dependency management
 - ✅ **pytest** - Comprehensive test suite with 87% coverage
 - ✅ **CI/CD Pipeline** - Automated testing, linting, and Docker builds with GitHub Actions
-- ✅ **Code Quality Tools** - ruff, black, mypy, isort
+- ✅ **Code Quality Tools** - flake8, black, mypy, isort
 
 ## 📋 Table of Contents
 
@@ -622,22 +622,22 @@ docker-compose exec api poetry run black .
 # Sort imports
 docker-compose exec api poetry run isort .
 
-# Lint with ruff
-docker-compose exec api poetry run ruff check app tests
+# Lint with flake8
+docker-compose exec api poetry run flake8 app tests
 
 # Type checking
 docker-compose exec api poetry run mypy app
 
 # Run all checks at once
 docker-compose exec api poetry run black . --check && \
-  docker-compose exec api poetry run ruff check app tests && \
+  docker-compose exec api poetry run flake8 app tests && \
   docker-compose exec api poetry run mypy app
 ```
 
 **Tools configured:**
 - **Black** - Code formatter (line length: 100)
 - **isort** - Import sorter
-- **ruff** - Fast Python linter
+- **flake8** - Python linter (PEP 8 compliance)
 - **mypy** - Static type checker
 
 ### Running Tests
@@ -678,7 +678,7 @@ This project includes a GitHub Actions workflow that automatically runs on every
 **Stage 1: Tests and Linting**
 - ✅ Sets up Python 3.13 and Poetry
 - ✅ Caches dependencies for faster builds
-- ✅ Runs linting with ruff
+- ✅ Runs linting with flake8
 - ✅ Checks code formatting with black
 - ✅ Performs type checking with mypy
 - ✅ Executes all pytest tests with coverage
@@ -706,7 +706,7 @@ The pipeline is defined in [`.github/workflows/ci.yml`](.github/workflows/ci.yml
 
 - **Services:** PostgreSQL 16, Redis 7
 - **Python Version:** 3.13
-- **Tools:** Poetry, pytest, ruff, black, mypy
+- **Tools:** Poetry, pytest, flake8, black, mypy
 - **Coverage:** XML and HTML reports generated
 - **Caching:** Dependencies and Docker layers cached for speed
 

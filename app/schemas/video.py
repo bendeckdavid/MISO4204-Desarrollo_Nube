@@ -8,6 +8,7 @@ class VideoUploadRequest(BaseModel):
 
     test: str
 
+
 class VideoResponse(BaseModel):
     """Schema for video response"""
 

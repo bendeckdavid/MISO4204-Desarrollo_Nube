@@ -13,13 +13,13 @@ router = APIRouter()
 
 @router.post("/upload", response_model=VideoResponse, status_code=status.HTTP_201_CREATED)
 def upload_video(
-    data: VideoUploadRequest, # TODO: Change to VideoUploadRequest
+    data: VideoUploadRequest,
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """
     Allow users to upload videos
-    
+
     Starts the async processing of the video
     """
     return {

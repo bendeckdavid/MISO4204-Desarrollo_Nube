@@ -74,8 +74,8 @@ jobs:
       - name: Install project
         run: poetry install --no-interaction
 
-      - name: Run linting (ruff)
-        run: poetry run ruff check app tests
+      - name: Run linting (flake8)
+        run: poetry run flake8 app tests
 
       - name: Run formatting check (black)
         run: poetry run black --check app tests

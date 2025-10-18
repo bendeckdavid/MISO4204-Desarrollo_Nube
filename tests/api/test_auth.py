@@ -1,6 +1,5 @@
 """Tests for authentication endpoints"""
 
-import pytest
 import uuid
 from fastapi import status
 from fastapi.testclient import TestClient
