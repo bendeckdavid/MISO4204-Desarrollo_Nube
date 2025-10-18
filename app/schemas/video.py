@@ -1,8 +1,8 @@
 """Video schemas"""
 
 from pydantic import BaseModel
-from typing import Optional
 from datetime import datetime
+from typing import Optional
 
 
 class VideoUploadRequest(BaseModel):
@@ -11,8 +11,15 @@ class VideoUploadRequest(BaseModel):
     test: str
 
 
-class VideoResponse(BaseModel):
+class VideoUploadResponse(BaseModel):
     """Schema for video response"""
+
+    id: str
+    user_id: str
+
+
+class VideoDetailResponse(BaseModel):
+    """Full video information"""
 
     video_id: str
     title: str

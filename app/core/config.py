@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "FastAPI Template"
     VERSION: str = "1.0.0"
     API_V1_STR: str = "/api"
+    MAX_VIDEO_SIZE: int = 10 * 1024 * 1024  # 10 MB
 
     # Database
     DATABASE_URL: str
