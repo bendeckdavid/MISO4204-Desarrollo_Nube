@@ -1,10 +1,18 @@
 """Database models"""
 
 import bcrypt
-from sqlalchemy import Column, String
+import uuid
+from sqlalchemy import Column, String, ForeignKey, Boolean
+from sqlalchemy.orm import relationship
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.hybrid import hybrid_property
 
 from app.db.base import Base
+
+
+def generate_uuid() -> str:
+    """Generate a new UUID string"""
+    return str(uuid.uuid4())
 
 
 class User(Base):
@@ -18,6 +26,8 @@ class User(Base):
     _password = Column("password", String(255), nullable=False)
     city = Column(String(100), nullable=False)
     country = Column(String(100), nullable=False)
+
+    videos = relationship("Video", back_populates="user")
 
     @hybrid_property
     def password(self):
@@ -48,13 +58,20 @@ class User(Base):
         return f"<User {self.email}>"
 
 
-class Task(Base):
-    """Task model - TEMPLATE (to be replaced with Video model)"""
+class Video(Base):
+    """Video model"""
 
-    __tablename__ = "tasks"
+    __tablename__ = "videos"
 
-    name = Column(String, nullable=False)
-    description = Column(String, nullable=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    user = relationship("User", back_populates="videos")
+
+    title = Column(String, nullable=False)
+    original_file_path = Column(String, nullable=False)
+    processed_file_path = Column(String, nullable=False)
+    # pending, processing, completed, failed
+    status = Column(String, nullable=False, default="pending")
+    is_published = Column(Boolean, nullable=False, default=False)
 
     def __repr__(self):
-        return f"<Task {self.name}>"
+        return f"<Video {self.title}>"
