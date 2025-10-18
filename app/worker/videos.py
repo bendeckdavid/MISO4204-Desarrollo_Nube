@@ -1,8 +1,6 @@
 """Celery tasks - TEMPLATE"""
 
-from app.db.database import get_db
 from app.worker.celery_app import celery_app
-from app.db.models import Video
 
 
 # A Celery task named "process_video" that do the following:
