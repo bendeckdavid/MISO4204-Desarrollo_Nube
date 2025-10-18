@@ -8,7 +8,7 @@ from app.core.config import settings
 from app.core.security import get_current_user
 from app.db import models
 from app.db.database import get_db
-from app.schemas.video import VideoUploadResponse, VideoUploadRequest,VideoDetailResponse
+from app.schemas.video import VideoUploadResponse, VideoUploadRequest, VideoDetailResponse
 from app.worker.videos import process_video
 import os
 
