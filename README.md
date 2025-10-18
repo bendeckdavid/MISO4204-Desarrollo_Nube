@@ -1,32 +1,32 @@
-# FastAPI Template - Scalable REST API
+# FastAPI Template - ANB Rising Stars Showcase API
 
-A production-ready FastAPI template with PostgreSQL, Celery, Redis, and Docker. Built with modern Python patterns and best practices.
+A production-ready FastAPI template with JWT Authentication, PostgreSQL, Celery, Redis, and Docker. Built for the ANB Rising Stars Showcase project.
 
 ## 🚀 Features
 
 - ✅ **FastAPI** - Modern, fast web framework for building APIs
+- ✅ **JWT Authentication** - Secure token-based authentication with bcrypt password hashing
 - ✅ **PostgreSQL** - Reliable relational database with UUID primary keys
-- ✅ **SQLAlchemy 2.0** - Async ORM with base models for DRY code
+- ✅ **SQLAlchemy 2.0** - ORM with hybrid properties for password management
 - ✅ **Celery + Redis** - Distributed task queue for background processing
 - ✅ **Docker Compose** - Multi-container orchestration
-- ✅ **Pydantic v2** - Data validation with base schemas
-- ✅ **fastapi-pagination** - Automatic pagination support
+- ✅ **Pydantic v2** - Data validation with environment-based configuration
 - ✅ **Poetry** - Modern dependency management
-- ✅ **pytest** - Comprehensive test suite (88% coverage)
-- ✅ **Pre-commit hooks** - Code quality (Black, Flake8, isort, mypy)
-- ✅ **API Key Authentication** - Simple security out of the box
+- ✅ **pytest** - Comprehensive test suite with 87% coverage
+- ✅ **CI/CD Pipeline** - Automated testing, linting, and Docker builds with GitHub Actions
+- ✅ **Code Quality Tools** - ruff, black, mypy, isort
 
 ## 📋 Table of Contents
 
 - [Quick Start](#-quick-start)
 - [Project Structure](#-project-structure)
-- [Architecture](#-architecture)
+- [Authentication](#-authentication)
 - [API Documentation](#-api-documentation)
+- [Testing the API](#-testing-the-api)
 - [Development](#-development)
-- [Testing](#-testing)
 - [Code Quality](#-code-quality)
+- [CI/CD Pipeline](#-cicd-pipeline)
 - [Docker Commands](#-docker-commands)
-- [Deployment](#-deployment)
 
 ## 🏃 Quick Start
 
@@ -40,12 +40,11 @@ A production-ready FastAPI template with PostgreSQL, Celery, Redis, and Docker. 
 
 ```bash
 # Clone the repository
-git clone git@github.com:bendeckdavid/MISO4204-Desarrollo_Nube.git
+git clone <repository-url>
+cd MISO4204-Desarrollo_Nube
 
-# Copy environment variables
-cp .env.example .env
-
-# Edit .env with your values (optional for development)
+# The .env file is already configured for development
+# You can modify it if needed
 ```
 
 ### 2. Start Services
@@ -60,12 +59,12 @@ docker-compose ps
 
 You should see:
 ```
-     Name                   Command                  State                        Ports                  
+     Name                   Command                  State                        Ports
 ---------------------------------------------------------------------------------------------------------
-fastapi_api      uvicorn app.main:app --hos ...   Up             0.0.0.0:8000->8000/tcp,:::8000->8000/tcp
-fastapi_db       docker-entrypoint.sh postgres    Up (healthy)   0.0.0.0:5433->5432/tcp,:::5433->5432/tcp
-fastapi_redis    docker-entrypoint.sh redis ...   Up (healthy)   0.0.0.0:6380->6379/tcp,:::6380->6379/tcp
-fastapi_worker   celery -A app.worker.celer ...   Up             8000/tcp              
+fastapi_api      uvicorn app.main:app --hos ...   Up             0.0.0.0:8000->8000/tcp
+fastapi_db       docker-entrypoint.sh postgres    Up (healthy)   0.0.0.0:5433->5432/tcp
+fastapi_redis    docker-entrypoint.sh redis ...   Up (healthy)   0.0.0.0:6380->6379/tcp
+fastapi_worker   celery -A app.worker.celer ...   Up             8000/tcp
 ```
 
 ### 3. Verify Installation
@@ -73,12 +72,6 @@ fastapi_worker   celery -A app.worker.celer ...   Up             8000/tcp
 ```bash
 # Check health
 curl http://localhost:8000/health
-
-# Load sample data
-docker-compose exec api python scripts/load_data.py
-
-# Run tests
-docker-compose exec api pytest -v
 ```
 
 ### 4. Access Documentation
@@ -95,32 +88,31 @@ docker-compose exec api pytest -v
 │   │   └── routes/
 │   │       ├── __init__.py
 │   │       ├── health.py          # Health check endpoint
-│   │       └── tasks.py            # CRUD + Celery example
+│   │       ├── auth.py             # Authentication (signup, login)
+│   │       └── videos.py           # Video upload endpoint
 │   ├── core/
 │   │   ├── __init__.py
-│   │   ├── config.py               # Settings (Pydantic)
-│   │   └── security.py             # API Key authentication
+│   │   ├── config.py               # Settings (Pydantic, env variables)
+│   │   └── security.py             # JWT token management
 │   ├── db/
 │   │   ├── __init__.py
 │   │   ├── base.py                 # Base model (UUID, timestamps)
 │   │   ├── database.py             # SQLAlchemy setup
-│   │   └── models.py               # Database models
+│   │   └── models.py               # Database models (User, Task)
 │   ├── schemas/
 │   │   ├── __init__.py
-│   │   ├── base.py                 # Base Pydantic schema
-│   │   └── task.py                 # Task schemas (Create, Update, Response)
+│   │   ├── auth.py                 # Auth schemas (Signup, Login, Token)
+│   │   └── video.py                # Video schemas (Upload, Response)
 │   ├── worker/
 │   │   ├── __init__.py
 │   │   ├── celery_app.py           # Celery configuration
 │   │   └── tasks.py                # Async tasks
 │   └── main.py                     # FastAPI application entry point
 ├── tests/
-│   ├── api/
-│   │   └── test_example.py         # API tests
 │   └── conftest.py                 # Test fixtures
 ├── scripts/
 │   └── load_data.py                # Sample data loader
-├── .env.example                    # Environment variables template
+├── .env                            # Environment variables
 ├── .pre-commit-config.yaml         # Pre-commit hooks config
 ├── docker-compose.yml              # Docker services orchestration
 ├── Dockerfile                      # API & Worker image
@@ -130,119 +122,99 @@ docker-compose exec api pytest -v
 
 ### Key Components
 
-#### Base Model (`app/db/base.py`)
-All models inherit from this base class:
+#### User Model with Password Hashing (`app/db/models.py`)
+
+The User model includes automatic password hashing using bcrypt:
+
 ```python
-class Base(SQLAlchemyBase):
-    __abstract__ = True
+class User(Base):
+    __tablename__ = "users"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    first_name = Column(String(100), nullable=False)
+    last_name = Column(String(100), nullable=False)
+    email = Column(String(255), unique=True, nullable=False, index=True)
+    _password = Column("password", String(255), nullable=False)
+    city = Column(String(100), nullable=False)
+    country = Column(String(100), nullable=False)
+
+    @hybrid_property
+    def password(self):
+        return self._password
+
+    @password.setter
+    def password(self, plaintext_password: str):
+        """Hash password using bcrypt when setting it."""
+        self._password = bcrypt.hashpw(
+            plaintext_password.encode("utf-8"),
+            bcrypt.gensalt()
+        ).decode("utf-8")
+
+    def verify_password(self, plaintext_password: str) -> bool:
+        """Verify a plaintext password against the stored hash."""
+        return bcrypt.checkpw(
+            plaintext_password.encode("utf-8"),
+            self._password.encode("utf-8")
+        )
 ```
 
-#### Base Schema (`app/schemas/base.py`)
-Common response fields for all schemas:
-```python
-class BaseSchema(BaseModel):
-    id: UUID
-    created_at: datetime
-    updated_at: datetime
+**Key features:**
+- ✅ Passwords are automatically hashed when assigned
+- ✅ Direct password verification method on the model
+- ✅ Stored in `password` column (not `password_hash`)
+- ✅ Uses bcrypt for secure hashing
 
-    class Config:
-        from_attributes = True
+## 🔐 Authentication
+
+### JWT Token-Based Authentication
+
+The API uses JWT (JSON Web Tokens) for authentication:
+
+1. **Signup** - Create a new user account
+2. **Login** - Get a JWT token
+3. **Protected Endpoints** - Use the token in the `Authorization` header
+
+### Environment Configuration
+
+JWT settings are configurable via environment variables in `.env`:
+
+```bash
+# JWT Configuration
+SECRET_KEY=your-secret-key-change-this-in-production-use-openssl-rand-hex-32
+ACCESS_TOKEN_EXPIRE_MINUTES=60  # Token expiration in minutes
 ```
 
-## 🏗️ Architecture
+**Configuration options:**
+- `SECRET_KEY` - Secret key for JWT signing (change in production!)
+- `ACCESS_TOKEN_EXPIRE_MINUTES` - Token expiration time (default: 60 minutes)
 
-### 3-Layer Architecture
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                         API Layer                           │
-│  (FastAPI Routes - app/api/routes/)                         │
-│  • Request validation (Pydantic)                            │
-│  • Response serialization                                   │
-│  • Authentication (API Key)                                 │
-└────────────────────────┬────────────────────────────────────┘
-                         │
-┌────────────────────────▼────────────────────────────────────┐
-│                      Business Logic                         │
-│  (Direct in routes - can be extracted to services layer)    │
-│  • CRUD operations                                          │
-│  • Celery task submission                                   │
-└────────────────────────┬────────────────────────────────────┘
-                         │
-┌────────────────────────▼────────────────────────────────────┐
-│                      Data Layer                             │
-│  (SQLAlchemy ORM - app/db/)                                 │
-│  • Database models                                          │
-│  • Query execution                                          │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### Celery Worker Architecture
-
-```
-┌─────────────┐         ┌─────────────┐         ┌─────────────┐
-│   FastAPI   │         │    Redis    │         │   Celery    │
-│     API     │────────▶│   (Broker)  │────────▶│   Worker    │
-└─────────────┘         └─────────────┘         └─────────────┘
-      │                        │                        │
-      │ 1. Submit task         │ 2. Queue task          │ 3. Process task
-      │                        │                        │
-      ▼                        ▼                        ▼
- Returns immediately      Stores task              Executes async
- (non-blocking)           (distributed)            (background)
-```
-
-**Flow:**
-1. API receives POST request with data
-2. Saves record to PostgreSQL (synchronous)
-3. Submits task to Celery via Redis (non-blocking)
-4. Returns response immediately
-5. Worker picks up task from Redis queue
-6. Worker processes task in background
-7. Result stored in Redis (optional)
-
-### Docker Services
-
-```
-┌──────────────────────────────────────────────────────────────┐
-│  Docker Compose Network (app_network)                        │
-│                                                              │
-│  ┌────────────┐  ┌────────────┐  ┌────────────┐              │
-│  │   fastapi  │  │ PostgreSQL │  │   Redis    │              │
-│  │    _api    │─▶│   _db      │  │   _redis   │              │
-│  │  :8000     │  │  :5433     │  │  :6380     │              │
-│  └─────┬──────┘  └────────────┘  └──────▲─────┘              │
-│        │                                  │                  │
-│        │         ┌────────────────────────┘                  │
-│        │         │                                           │
-│        ▼         ▼                                           │
-│  ┌────────────────────┐                                      │
-│  │   fastapi_worker   │  (Celery)                            │
-│  └────────────────────┘                                      │
-│                                                              │
-│  Volume: postgres_data (persistent)                          │
-└──────────────────────────────────────────────────────────────┘
-```
 
 ## 📚 API Documentation
 
-### Authentication
-
-All endpoints require an API Key in the header:
-
-```bash
-curl -H "x-api-key: test-api-key-123" http://localhost:8000/api/tasks/
+### Base URL
+```
+http://localhost:8000
 ```
 
-### Endpoints
+### Endpoints Overview
 
-#### Health Check
+| Endpoint | Method | Auth Required | Description |
+|----------|--------|---------------|-------------|
+| `/health` | GET | No | Health check |
+| `/api/auth/signup` | POST | No | Register new user |
+| `/api/auth/login` | POST | No | Login and get JWT token |
+| `/api/videos/upload` | POST | Yes (JWT) | Upload video |
+
+---
+
+### 1️⃣ Health Check
+
+**Endpoint:** `GET /health`
+
+**Description:** Check if the API is running
+
+**Request:**
 ```bash
-GET /health
+curl http://localhost:8000/health
 ```
 
 **Response:**
@@ -253,160 +225,353 @@ GET /health
 }
 ```
 
-#### Create Task
-```bash
-POST /api/tasks/
-Content-Type: application/json
-x-api-key: test-api-key-123
+---
 
-{
-  "name": "My Task",
-  "description": "Task description"
-}
+### 2️⃣ User Signup
+
+**Endpoint:** `POST /api/auth/signup`
+
+**Description:** Register a new user account
+
+**Request:**
+```bash
+curl -X POST http://localhost:8000/api/auth/signup \
+  -H "Content-Type: application/json" \
+  -d '{
+    "first_name": "Juan",
+    "last_name": "Pérez",
+    "email": "juan@example.com",
+    "password1": "securepassword123",
+    "password2": "securepassword123",
+    "city": "Bogotá",
+    "country": "Colombia"
+  }'
 ```
 
-**Response:**
+**Request Body:**
 ```json
 {
-  "id": "a971d809-f425-4774-b81e-428a85529c79",
-  "name": "My Task",
-  "description": "Task description",
-  "created_at": "2025-10-16T08:34:44.073934",
-  "updated_at": "2025-10-16T08:34:44.073940"
+  "first_name": "string",      // Required, max 100 chars
+  "last_name": "string",       // Required, max 100 chars
+  "email": "string",           // Required, valid email, unique
+  "password1": "string",       // Required, min 8 chars
+  "password2": "string",       // Required, must match password1
+  "city": "string",            // Required, max 100 chars
+  "country": "string"          // Required, max 100 chars
 }
 ```
 
-**Note:** Creating a task automatically submits it to Celery for background processing.
-
-#### List Tasks (with Pagination)
-```bash
-GET /api/tasks/?page=1&size=10
-x-api-key: test-api-key-123
-```
-
-**Response:**
+**Response (201 Created):**
 ```json
 {
-  "items": [
-    {
-      "id": "a971d809-f425-4774-b81e-428a85529c79",
-      "name": "My Task",
-      "description": "Task description",
-      "created_at": "2025-10-16T08:34:44.073934",
-      "updated_at": "2025-10-16T08:34:44.073940"
-    }
-  ],
-  "total": 25,
-  "page": 1,
-  "size": 10,
-  "pages": 3
+  "message": "User created successfully",
+  "user_id": "c8b44023-1172-4a56-b440-045120713d14"
 }
 ```
 
-**Pagination Parameters:**
-- `page` (default: 1) - Page number
-- `size` (default: 50) - Items per page
+**Error Responses:**
+- **400 Bad Request** - Email already registered or passwords don't match
+- **422 Unprocessable Entity** - Validation error (invalid email, short password, etc.)
 
-#### Get Task by ID
+---
+
+### 3️⃣ User Login
+
+**Endpoint:** `POST /api/auth/login`
+
+**Description:** Authenticate and receive a JWT token
+
+**Request:**
 ```bash
-GET /api/tasks/{task_id}
-x-api-key: test-api-key-123
+curl -X POST http://localhost:8000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "juan@example.com",
+    "password": "securepassword123"
+  }'
 ```
 
-#### Update Task
-```bash
-PATCH /api/tasks/{task_id}
-Content-Type: application/json
-x-api-key: test-api-key-123
-
+**Request Body:**
+```json
 {
-  "name": "Updated Task",
-  "description": "New description"
+  "email": "string",      // Required
+  "password": "string"    // Required
 }
 ```
 
-**Note:** `updated_at` timestamp is automatically updated.
-
-#### Delete Task
-```bash
-DELETE /api/tasks/{task_id}
-x-api-key: test-api-key-123
+**Response (200 OK):**
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjOGI0NDAyMy0xMTcyLTRhNTYtYjQ0MC0wNDUxMjA3MTNkMTQiLCJleHAiOjE3NjA3NzkyODN9.p6RBMfqwqQvfhzd8NkGXM36UiZ7Gch2A0_HGhFvaLXM",
+  "token_type": "Bearer",
+  "expires_in": 3600  // Seconds (60 minutes * 60)
+}
 ```
 
-**Response:** 204 No Content
+**Token Details:**
+- **Type:** JWT (JSON Web Token)
+- **Expiration:** Configurable via `ACCESS_TOKEN_EXPIRE_MINUTES` (default: 1 hour)
+- **Contains:** User ID in the `sub` claim
 
-### Full Example Workflow
+**Error Responses:**
+- **401 Unauthorized** - Invalid email or password
+
+**Save the token for protected endpoints!**
+
+---
+
+### 4️⃣ Upload Video
+
+**Endpoint:** `POST /api/videos/upload`
+
+**Description:** Upload a video (protected endpoint)
+
+**Authentication:** Required (JWT token)
+
+**Request:**
+```bash
+curl -X POST http://localhost:8000/api/videos/upload \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN_HERE" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "test": "Mi video de habilidades"
+  }'
+```
+
+**Request Headers:**
+```
+Authorization: Bearer <jwt_token>
+Content-Type: application/json
+```
+
+**Request Body:**
+```json
+{
+  "test": "string"  // Required
+}
+```
+
+**Response (201 Created):**
+```json
+{
+  "id": "example-video-id",
+  "user_id": "c8b44023-1172-4a56-b440-045120713d14"
+}
+```
+
+**Error Responses:**
+- **401 Unauthorized** - Missing or invalid JWT token
+- **422 Unprocessable Entity** - Validation error
+
+---
+
+## 🧪 Testing the API
+
+### Complete Test Script
+
+Save this as `test_api.sh`:
 
 ```bash
-# 1. Create a task
-RESPONSE=$(curl -s -X POST "http://localhost:8000/api/tasks/" \
+#!/bin/bash
+
+echo "=========================================="
+echo "  ANB Rising Stars API - Complete Test"
+echo "=========================================="
+echo ""
+
+# Colors for output
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Base URL
+BASE_URL="http://localhost:8000"
+
+echo "${BLUE}=== 1. Health Check ===${NC}"
+curl -s $BASE_URL/health | python3 -m json.tool
+echo -e "\n"
+
+echo "${BLUE}=== 2. User Signup ===${NC}"
+SIGNUP_RESPONSE=$(curl -s -X POST $BASE_URL/api/auth/signup \
   -H "Content-Type: application/json" \
-  -H "x-api-key: test-api-key-123" \
-  -d '{"name": "Process Video", "description": "Convert to 720p"}')
+  -d '{
+    "first_name": "Test",
+    "last_name": "User",
+    "email": "testuser@example.com",
+    "password1": "testpass123",
+    "password2": "testpass123",
+    "city": "Medellín",
+    "country": "Colombia"
+  }')
 
-# 2. Extract task ID
-TASK_ID=$(echo $RESPONSE | grep -o '"id": *"[^"]*"' | cut -d'"' -f4)
+echo $SIGNUP_RESPONSE | python3 -m json.tool
 
-# 3. Get task details
-curl -H "x-api-key: test-api-key-123" \
-  "http://localhost:8000/api/tasks/$TASK_ID"
+# Check if signup was successful
+if echo $SIGNUP_RESPONSE | grep -q "user_id"; then
+    echo -e "${GREEN}✓ Signup successful${NC}"
+else
+    echo -e "${RED}✗ Signup failed (user might already exist)${NC}"
+fi
+echo ""
 
-# 4. Update task
-curl -X PATCH "http://localhost:8000/api/tasks/$TASK_ID" \
+echo "${BLUE}=== 3. User Login ===${NC}"
+LOGIN_RESPONSE=$(curl -s -X POST $BASE_URL/api/auth/login \
   -H "Content-Type: application/json" \
-  -H "x-api-key: test-api-key-123" \
-  -d '{"name": "Video Processed"}'
+  -d '{
+    "email": "testuser@example.com",
+    "password": "testpass123"
+  }')
 
-# 5. Verify Celery processed it
-docker-compose logs worker | grep "succeeded"
+echo $LOGIN_RESPONSE | python3 -m json.tool
 
-# 6. Delete task
-curl -X DELETE "http://localhost:8000/api/tasks/$TASK_ID" \
-  -H "x-api-key: test-api-key-123"
+# Extract token
+TOKEN=$(echo $LOGIN_RESPONSE | python3 -c "import sys, json; print(json.load(sys.stdin)['access_token'])" 2>/dev/null)
+
+if [ -z "$TOKEN" ]; then
+    echo -e "${RED}✗ Login failed - could not get token${NC}"
+    exit 1
+else
+    echo -e "${GREEN}✓ Login successful${NC}"
+    echo -e "${BLUE}Token (first 50 chars): ${TOKEN:0:50}...${NC}"
+fi
+echo ""
+
+echo "${BLUE}=== 4. Upload Video (WITH token) ===${NC}"
+UPLOAD_RESPONSE=$(curl -s -X POST $BASE_URL/api/videos/upload \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "test": "Mi video de habilidades increíbles"
+  }')
+
+echo $UPLOAD_RESPONSE | python3 -m json.tool
+
+if echo $UPLOAD_RESPONSE | grep -q "id"; then
+    echo -e "${GREEN}✓ Video upload successful${NC}"
+else
+    echo -e "${RED}✗ Video upload failed${NC}"
+fi
+echo ""
+
+echo "${BLUE}=== 5. Upload Video (WITHOUT token - should fail) ===${NC}"
+FAIL_RESPONSE=$(curl -s -X POST $BASE_URL/api/videos/upload \
+  -H "Content-Type: application/json" \
+  -d '{
+    "test": "This should fail"
+  }')
+
+echo $FAIL_RESPONSE | python3 -m json.tool
+
+if echo $FAIL_RESPONSE | grep -q "Not authenticated"; then
+    echo -e "${GREEN}✓ Authentication working correctly (request blocked)${NC}"
+else
+    echo -e "${RED}✗ Authentication not working${NC}"
+fi
+echo ""
+
+echo "${GREEN}=========================================="
+echo "  All tests completed!"
+echo "==========================================${NC}"
+```
+
+Make it executable and run:
+```bash
+chmod +x test_api.sh
+./test_api.sh
+```
+
+### Manual Testing Steps
+
+#### Step 1: Create a User
+```bash
+curl -X POST http://localhost:8000/api/auth/signup \
+  -H "Content-Type: application/json" \
+  -d '{
+    "first_name": "Juan",
+    "last_name": "Pérez",
+    "email": "juan@example.com",
+    "password1": "mypassword123",
+    "password2": "mypassword123",
+    "city": "Bogotá",
+    "country": "Colombia"
+  }'
+```
+
+#### Step 2: Login and Get Token
+```bash
+curl -X POST http://localhost:8000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "juan@example.com",
+    "password": "mypassword123"
+  }'
+```
+
+**Save the `access_token` from the response!**
+
+#### Step 3: Use Token for Protected Endpoint
+```bash
+# Export token as environment variable
+export TOKEN="your_access_token_here"
+
+# Upload video with authentication
+curl -X POST http://localhost:8000/api/videos/upload \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "test": "My amazing basketball skills"
+  }'
+```
+
+#### Step 4: Test Without Token (Should Fail)
+```bash
+curl -X POST http://localhost:8000/api/videos/upload \
+  -H "Content-Type: application/json" \
+  -d '{
+    "test": "This should fail"
+  }'
+```
+
+**Expected response:**
+```json
+{
+  "detail": "Not authenticated"
+}
+```
+
+### Using Swagger UI (Interactive Testing)
+
+1. Go to http://localhost:8000/docs
+2. Click on **POST /api/auth/login**
+3. Click **"Try it out"**
+4. Enter credentials and execute
+5. Copy the `access_token` from the response
+6. Click the **"Authorize"** button at the top
+7. Paste the token in the format: `Bearer <your_token>`
+8. Click **"Authorize"**
+9. Now you can test protected endpoints!
+
+### Verify Database
+
+Check users created in the database:
+```bash
+docker-compose exec db psql -U fastapi_user -d fastapi_db -c "SELECT id, email, first_name, last_name, city, country, created_at FROM users;"
 ```
 
 ## 💻 Development
 
-### Local Setup (without Docker)
-
-**Note:** Docker is recommended for most users. Only set up locally if you need to run without Docker.
-
-```bash
-# Install Poetry
-curl -sSL https://install.python-poetry.org | python3 -
-
-# Install dependencies
-poetry install
-
-# Install pre-commit hooks (optional - for automatic git hooks)
-poetry run pre-commit install
-
-# Set up local services (PostgreSQL and Redis needed)
-# Option 1: Use Docker for services only
-docker-compose up -d db redis
-
-# Option 2: Install PostgreSQL and Redis locally
-# Update .env with local connection strings
-# DATABASE_URL=postgresql://user:pass@localhost:5432/db
-# CELERY_BROKER_URL=redis://localhost:6379/0
-
-# Run API
-poetry run uvicorn app.main:app --reload
-
-# Run Celery worker (in another terminal)
-poetry run celery -A app.worker.celery_app worker --loglevel=info
-```
-
 ### Environment Variables
 
-Create a `.env` file (see `.env.example`):
+The `.env` file contains all configuration:
 
 ```bash
 # Database
 DATABASE_URL=postgresql://fastapi_user:fastapi_password@db:5432/fastapi_db
 
-# API Security
-API_KEY=your-api-key-change-in-production
+# JWT Configuration (change in production!)
+SECRET_KEY=your-secret-key-change-this-in-production-use-openssl-rand-hex-32
+ACCESS_TOKEN_EXPIRE_MINUTES=60
 
 # Celery
 CELERY_BROKER_URL=redis://redis:6379/0
@@ -416,264 +581,166 @@ CELERY_RESULT_BACKEND=redis://redis:6379/0
 ENVIRONMENT=development
 ```
 
-### Adding a New Model
+**Important Configuration:**
+- **SECRET_KEY** - Use `openssl rand -hex 32` to generate a secure key for production
+- **ACCESS_TOKEN_EXPIRE_MINUTES** - Adjust based on security requirements
+  - Development: 120+ minutes (convenience)
+  - Production: 15-30 minutes (security)
 
-1. **Create the model** (inherits from Base):
-```python
-# app/db/models.py
-from sqlalchemy import Column, String, Float
-from app.db.base import Base
-
-class Product(Base):
-    __tablename__ = "products"
-
-    name = Column(String, nullable=False)
-    price = Column(Float, nullable=False)
-```
-
-2. **Create schemas** (inherit from BaseSchema):
-```python
-# app/schemas/product.py
-from pydantic import BaseModel, Field
-from app.schemas.base import BaseSchema
-
-class ProductCreate(BaseModel):
-    name: str = Field(..., min_length=1)
-    price: float = Field(..., gt=0)
-
-class ProductUpdate(BaseModel):
-    name: str | None = None
-    price: float | None = Field(None, gt=0)
-
-class ProductResponse(BaseSchema):
-    name: str
-    price: float
-```
-
-3. **Create routes**:
-```python
-# app/api/routes/products.py
-from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
-from app.db import models
-from app.db.database import get_db
-from app.schemas.product import ProductCreate, ProductResponse
-
-router = APIRouter()
-
-@router.post("/", response_model=ProductResponse)
-def create_product(data: ProductCreate, db: Session = Depends(get_db)):
-    product = models.Product(**data.dict())
-    db.add(product)
-    db.commit()
-    db.refresh(product)
-    return product
-```
-
-4. **Register router**:
-```python
-# app/main.py
-from app.api.routes import products
-
-app.include_router(
-    products.router,
-    prefix=f"{settings.API_V1_STR}/products",
-    tags=["Products"]
-)
-```
-
-### Creating Celery Tasks
-
-```python
-# app/worker/tasks.py
-from app.worker.celery_app import celery_app
-
-@celery_app.task(bind=True, max_retries=3)
-def process_video(self, video_id: str):
-    """Process video asynchronously"""
-    try:
-        # Your processing logic here
-        result = {"status": "success", "video_id": video_id}
-        return result
-    except Exception as e:
-        # Retry on failure
-        raise self.retry(exc=e, countdown=60)
-```
-
-**Usage in routes:**
-```python
-# Submit task (non-blocking)
-task = process_video.apply_async(args=[video_id])
-
-# Get task ID for tracking
-task_id = task.id
-```
-
-## 🧪 Testing
-
-### Run All Tests
+### Local Setup (without Docker)
 
 ```bash
-# With Docker
-docker-compose exec api pytest -v
+# Install Poetry
+curl -sSL https://install.python-poetry.org | python3 -
 
-# With coverage report
-docker-compose exec api pytest --cov=app --cov-report=html
+# Install dependencies
+poetry install
 
-# View coverage report
-# Open htmlcov/index.html in your browser
+# Install pre-commit hooks (optional)
+poetry run pre-commit install
 
-# Specific test file
-docker-compose exec api pytest tests/api/test_example.py -v
+# Start services (PostgreSQL and Redis needed)
+docker-compose up -d db redis
 
-# Specific test function
-docker-compose exec api pytest tests/api/test_example.py::test_create_task -v
+# Run API
+poetry run uvicorn app.main:app --reload
+
+# Run Celery worker (in another terminal)
+poetry run celery -A app.worker.celery_app worker --loglevel=info
 ```
-
-### Current Test Coverage
-
-```
-TOTAL: 160 statements, 20 missed
-Coverage: 88%
-```
-
-### Test Structure
-
-```
-tests/
-├── api/
-│   └── test_example.py    # API endpoint tests
-├── unit/
-│   └── (add unit tests)   # Unit tests for services/utils
-└── conftest.py            # Shared fixtures
-```
-
-### Writing Tests
-
-```python
-# tests/api/test_products.py
-def test_create_product(client):
-    """Test creating a product"""
-    response = client.post(
-        "/api/products/",
-        json={"name": "Laptop", "price": 999.99},
-        headers={"x-api-key": "test-api-key-123"}
-    )
-
-    assert response.status_code == 201
-    data = response.json()
-    assert data["name"] == "Laptop"
-    assert "id" in data
-    assert "created_at" in data
-```
-
-### Test Fixtures
-
-Common fixtures are defined in `conftest.py`:
-
-- `client` - TestClient for API testing
-- `db` - Database session for testing
 
 ## 🔍 Code Quality
 
 ### Linters and Formatters
 
-**Recommended: Run linters directly with Docker** (no git required):
+Run linters with Docker (recommended):
 
 ```bash
 # Format code with Black
-docker-compose exec api black app/ tests/
+docker-compose exec api poetry run black .
 
 # Sort imports
-docker-compose exec api isort app/ tests/
+docker-compose exec api poetry run isort .
 
-# Check style
-docker-compose exec api flake8 app/ tests/
+# Lint with ruff
+docker-compose exec api poetry run ruff check app tests
 
 # Type checking
-docker-compose exec api mypy app/
+docker-compose exec api poetry run mypy app
 
 # Run all checks at once
-docker-compose exec api black app/ tests/ --check && \
-  docker-compose exec api isort app/ tests/ --check-only && \
-  docker-compose exec api flake8 app/ tests/ && \
-  docker-compose exec api mypy app/
+docker-compose exec api poetry run black . --check && \
+  docker-compose exec api poetry run ruff check app tests && \
+  docker-compose exec api poetry run mypy app
 ```
 
 **Tools configured:**
 - **Black** - Code formatter (line length: 100)
 - **isort** - Import sorter
-- **Flake8** - Style guide enforcement
+- **ruff** - Fast Python linter
 - **mypy** - Static type checker
 
-### Pre-commit Hooks (Optional - Local Development)
-
-Pre-commit hooks run automatically before each commit. This requires **local Python setup** (not Docker):
+### Running Tests
 
 ```bash
-# Install Poetry locally
-curl -sSL https://install.python-poetry.org | python3 -
+# Run all tests
+docker-compose exec api poetry run pytest
 
-# Install dependencies locally
-poetry install
+# Run with coverage
+docker-compose exec api poetry run pytest --cov=app --cov-report=term --cov-report=html
 
-# Install pre-commit hooks
-poetry run pre-commit install
+# Run specific test file
+docker-compose exec api poetry run pytest tests/api/test_auth.py -v
 
-# Now hooks run automatically on git commit
-# Or run manually:
-poetry run pre-commit run --all-files
+# Run tests and open coverage report
+docker-compose exec api poetry run pytest --cov=app --cov-report=html
+# Then open htmlcov/index.html in your browser
 ```
 
-**Note:** Pre-commit hooks are optional. You can use the Docker linting commands above instead.
+### Pre-commit Hooks (Optional)
 
-### Configuration Files
+For local development with git hooks:
 
-- `.pre-commit-config.yaml` - Pre-commit hooks
-- `pyproject.toml` - Tool configurations (Black, pytest, mypy, isort)
-- `.flake8` - Flake8 specific config
+```bash
+# Install pre-commit hooks (requires local Poetry setup)
+docker-compose exec api poetry run pre-commit install
 
-### Code Style Rules
+# Run manually
+docker-compose exec api poetry run pre-commit run --all-files
+```
 
-- Line length: 100 characters
-- Imports sorted by: stdlib → third-party → local
-- Type hints required for public functions
-- Docstrings for all public modules, classes, and functions
+## 🔄 CI/CD Pipeline
+
+This project includes a GitHub Actions workflow that automatically runs on every push and pull request to `main` or `develop` branches.
+
+### Pipeline Stages
+
+**Stage 1: Tests and Linting**
+- ✅ Sets up Python 3.13 and Poetry
+- ✅ Caches dependencies for faster builds
+- ✅ Runs linting with ruff
+- ✅ Checks code formatting with black
+- ✅ Performs type checking with mypy
+- ✅ Executes all pytest tests with coverage
+- ✅ Uploads coverage reports as artifacts
+
+**Stage 2: Docker Build**
+- ✅ Builds Docker image
+- ✅ Validates Docker Compose configuration
+- ✅ Uses build cache for optimization
+- ✅ Only runs if tests pass
+
+### Viewing Results
+
+After pushing code to GitHub:
+
+1. Go to your repository on GitHub
+2. Click on the **"Actions"** tab
+3. Select the latest workflow run
+4. View the results of each job
+5. Download coverage reports from the artifacts section
+
+### Pipeline Configuration
+
+The pipeline is defined in [`.github/workflows/ci.yml`](.github/workflows/ci.yml) and includes:
+
+- **Services:** PostgreSQL 16, Redis 7
+- **Python Version:** 3.13
+- **Tools:** Poetry, pytest, ruff, black, mypy
+- **Coverage:** XML and HTML reports generated
+- **Caching:** Dependencies and Docker layers cached for speed
 
 ## 🐳 Docker Commands
 
 ### Container Management
 
 ```bash
-# Start services in background
+# Start services
 docker-compose up -d
 
 # Start with rebuild
 docker-compose up --build -d
 
-# Stop services (keeps data)
+# Stop services
 docker-compose stop
 
 # Stop and remove containers
 docker-compose down
 
-# Stop and remove containers + volumes (clean slate)
+# Stop and remove everything (including volumes)
 docker-compose down -v
 
 # View logs
-docker-compose logs -f          # All services
-docker-compose logs -f api      # Specific service
-docker-compose logs --tail=50 worker  # Last 50 lines
+docker-compose logs -f api      # API logs
+docker-compose logs -f worker   # Worker logs
+docker-compose logs --tail=50 api  # Last 50 lines
 
-# Execute command in container
+# Execute commands
 docker-compose exec api bash    # Open shell
 docker-compose exec api python scripts/load_data.py
 
-# View service status
-docker-compose ps
-
-# Restart specific service
-docker-compose restart api
+# Restart services
+docker-compose restart api worker
 ```
 
 ### Database Operations
@@ -682,32 +749,14 @@ docker-compose restart api
 # Connect to PostgreSQL
 docker-compose exec db psql -U fastapi_user -d fastapi_db
 
-# Common SQL commands
-\dt                    # List tables
-\d tasks              # Describe table
-SELECT * FROM tasks;  # Query data
-\q                    # Quit
+# View users table
+docker-compose exec db psql -U fastapi_user -d fastapi_db -c "SELECT * FROM users;"
 
 # Backup database
 docker-compose exec db pg_dump -U fastapi_user fastapi_db > backup.sql
 
 # Restore database
 docker-compose exec -T db psql -U fastapi_user fastapi_db < backup.sql
-```
-
-### Redis Operations
-
-```bash
-# Connect to Redis
-docker-compose exec redis redis-cli
-
-# Common Redis commands
-KEYS *                # List all keys
-GET key_name          # Get value
-DEL key_name          # Delete key
-FLUSHALL              # Clear all data
-INFO                  # Server info
-exit                  # Quit
 ```
 
 ### Celery Operations
@@ -719,57 +768,8 @@ docker-compose exec worker celery -A app.worker.celery_app inspect active
 # View registered tasks
 docker-compose exec worker celery -A app.worker.celery_app inspect registered
 
-# View worker stats
-docker-compose exec worker celery -A app.worker.celery_app inspect stats
-
 # Purge all tasks from queue
 docker-compose exec worker celery -A app.worker.celery_app purge
-```
-
-## 🚢 Deployment
-
-### Scaling Workers
-
-```bash
-# Scale Celery workers horizontally
-docker-compose up -d --scale worker=4
-
-# Or update docker-compose.yml
-services:
-  worker:
-    deploy:
-      replicas: 4
-```
-
-## 📊 Monitoring
-
-### Health Checks
-
-```bash
-# Application health
-curl http://localhost:8000/health
-
-# Database health
-docker-compose exec db pg_isready -U fastapi_user
-
-# Redis health
-docker-compose exec redis redis-cli ping
-
-# Worker health (check if processing tasks)
-docker-compose logs --tail=10 worker
-```
-
-### Celery Monitoring
-
-```bash
-# View worker status
-docker-compose exec worker celery -A app.worker.celery_app inspect active
-
-# View registered tasks
-docker-compose exec worker celery -A app.worker.celery_app inspect registered
-
-# Monitor in real-time
-docker-compose logs -f worker | grep "succeeded\|failed"
 ```
 ## 📝 License
 
@@ -787,4 +787,4 @@ Built with:
 
 ---
 
-**Need help?** Check the [documentation](http://localhost:8000/docs) or open an issue.
+**Need help?** Check the [interactive documentation](http://localhost:8000/docs) or review the code.
