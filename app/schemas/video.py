@@ -4,13 +4,14 @@ from pydantic import BaseModel
 
 
 class VideoUploadRequest(BaseModel):
-    """Schema for video upload request"""
+    """Schema for video upload request accept a file and a video title from the current logged in user"""
 
-    test: str
+    title: str
+    file: bytes
 
 
-class VideoResponse(BaseModel):
-    """Schema for video response"""
+class VideoUploadResponse(BaseModel):
+    """Schema for video upload response"""
 
-    id: str
+    video_id: str
     user_id: str
