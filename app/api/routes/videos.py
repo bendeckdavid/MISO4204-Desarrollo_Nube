@@ -3,7 +3,6 @@
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 from typing import List
-from datetime import datetime
 
 from app.core.security import get_current_user
 from app.db import models
@@ -28,6 +27,7 @@ def upload_video(
         "id": "example-video-id",
         "user_id": str(current_user.id),
     }
+
 
 @router.get("/", response_model=List[VideoResponse], status_code=status.HTTP_200_OK)
 def list_user_videos(
