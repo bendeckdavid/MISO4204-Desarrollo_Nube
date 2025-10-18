@@ -18,8 +18,9 @@ class Settings(BaseSettings):
     CELERY_BROKER_URL: str
     CELERY_RESULT_BACKEND: str
 
-    # API Security
-    API_KEY: str
+    # JWT Security
+    SECRET_KEY: str
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
 
     # Environment
     ENVIRONMENT: str = "development"
