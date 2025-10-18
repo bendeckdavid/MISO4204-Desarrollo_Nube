@@ -20,7 +20,7 @@ def upload_video(
     data: VideoUploadRequest,
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db),
-
+):
     """
     Allow users to upload videos
 
