@@ -1,4 +1,3 @@
-
 """Tests for authentication endpoints"""
 
 import uuid
