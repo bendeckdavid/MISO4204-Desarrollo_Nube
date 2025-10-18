@@ -5,9 +5,9 @@ from pathlib import Path
 
 sys.path.append(str(Path(__file__).parent.parent))
 
-from app.db import models
-from app.db.base import Base
-from app.db.database import SessionLocal, engine
+from app.db import models  # noqa: E402
+from app.db.base import Base  # noqa: E402
+from app.db.database import SessionLocal, engine  # noqa: E402
 
 Base.metadata.create_all(bind=engine)
 
