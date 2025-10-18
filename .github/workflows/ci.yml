@@ -125,5 +125,7 @@ jobs:
 
       - name: Test Docker Compose
         run: |
-          docker compose config
+          # Create a minimal .env file for docker-compose config validation
+          touch .env
+          docker compose config > /dev/null
           echo "✅ Docker Compose configuration is valid"
