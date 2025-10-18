@@ -46,7 +46,9 @@ def list_user_videos(
         }
 
         if video.status == "processed" or video.status == "completed":
-            video_data["processed_at"] = video.updated_at.isoformat() if hasattr(video, "updated_at") else None
+            video_data["processed_at"] = (
+                video.updated_at.isoformat() if hasattr(video, "updated_at") else None
+            )
             video_data["processed_url"] = f"https://anb.com/videos/processed/{video.id}.mp4"
 
         response.append(video_data)
