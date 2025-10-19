@@ -121,11 +121,6 @@ jobs:
         uses: SonarSource/sonarqube-scan-action@v6
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        with:
-          args: >
-            -Dsonar.projectKey=tuProyecto
-            -Dsonar.sources=.
-            -Dsonar.python.coverage.reportPaths=coverage.xml
 
   build:
     name: Build Docker Image
