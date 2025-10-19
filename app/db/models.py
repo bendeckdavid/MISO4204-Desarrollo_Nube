@@ -3,7 +3,7 @@
 import bcrypt
 import uuid
 from datetime import datetime
-from sqlalchemy import Column, String, ForeignKey, Boolean , DateTime, UniqueConstraint
+from sqlalchemy import Column, String, ForeignKey, Boolean, DateTime, UniqueConstraint
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.hybrid import hybrid_property
@@ -30,7 +30,6 @@ class User(Base):
 
     videos = relationship("Video", back_populates="user")
     votes = relationship("Vote", back_populates="user", cascade="all, delete-orphan")
-
 
     @hybrid_property
     def password(self):
@@ -100,9 +99,7 @@ class Vote(Base):
     video = relationship("Video", back_populates="votes")
 
     # Unique constraint: one vote per user per video
-    __table_args__ = (
-        UniqueConstraint('user_id', 'video_id', name='uq_user_video_vote'),
-    )
+    __table_args__ = (UniqueConstraint("user_id", "video_id", name="uq_user_video_vote"),)
 
     def __repr__(self):
         return f"<Vote user={self.user_id} video={self.video_id}>"

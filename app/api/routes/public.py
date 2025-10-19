@@ -3,30 +3,22 @@
 from fastapi import APIRouter, Depends, status, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc
-from typing import Optional, List
+from typing import List
 import math
 
 from app.core.security import get_current_user
 from app.db import models
 from app.db.database import get_db
-from app.schemas.vote import (
-    VoteResponse,
-    PublicVideoResponse,
-    RankingResponse
-)
+from app.schemas.vote import VoteResponse, PublicVideoResponse, RankingResponse
 
 router = APIRouter()
 
 
-@router.get(
-    "/videos",
-    response_model=List[PublicVideoResponse],
-    status_code=status.HTTP_200_OK
-)
+@router.get("/videos", response_model=List[PublicVideoResponse], status_code=status.HTTP_200_OK)
 async def list_public_videos(
-        skip: int = Query(0, ge=0, description="Number of records to skip"),
-        limit: int = Query(50, ge=1, le=100, description="Max records to return"),
-        db: Session = Depends(get_db),
+    skip: int = Query(0, ge=0, description="Number of records to skip"),
+    limit: int = Query(50, ge=1, le=100, description="Max records to return"),
+    db: Session = Depends(get_db),
 ):
     """
     List all public videos available for voting.
@@ -36,38 +28,37 @@ async def list_public_videos(
     - Published (is_published = True)
     """
 
-    query = db.query(models.Video).filter(
-        models.Video.status.in_(["processed", "completed"])
-    ).join(models.User)
-
+    query = (
+        db.query(models.Video)
+        .filter(models.Video.status.in_(["processed", "completed"]))
+        .join(models.User)
+    )
 
     videos = query.offset(skip).limit(limit).all()
 
     response = []
     for video in videos:
-        response.append({
-            "video_id": str(video.id),
-            "title": video.title,
-            "player_name": f"{video.user.first_name} {video.user.last_name}",
-            "city": video.user.city,
-            "country": video.user.country,
-            "processed_url": f"https://anb.com/videos/processed/{video.id}.mp4",
-            "votes": video.vote_count,
-            "uploaded_at": video.created_at,
-        })
+        response.append(
+            {
+                "video_id": str(video.id),
+                "title": video.title,
+                "player_name": f"{video.user.first_name} {video.user.last_name}",
+                "city": video.user.city,
+                "country": video.user.country,
+                "processed_url": f"https://anb.com/videos/processed/{video.id}.mp4",
+                "votes": video.vote_count,
+                "uploaded_at": video.created_at,
+            }
+        )
 
     return response
 
 
-@router.post(
-    "/videos/{video_id}/vote",
-    response_model=VoteResponse,
-    status_code=status.HTTP_200_OK
-)
+@router.post("/videos/{video_id}/vote", response_model=VoteResponse, status_code=status.HTTP_200_OK)
 async def vote_for_video(
-        video_id: str,
-        current_user: models.User = Depends(get_current_user),
-        db: Session = Depends(get_db),
+    video_id: str,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
     """
     Cast a vote for a specific video.
@@ -82,59 +73,49 @@ async def vote_for_video(
     video = db.query(models.Video).filter(models.Video.id == video_id).first()
 
     if not video:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Video no encontrado"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Video no encontrado")
 
     if video.status not in ["processed", "completed"]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Este video no está disponible para votación"
+            detail="Este video no está disponible para votación",
         )
 
     # Check if user already voted for this video
-    existing_vote = db.query(models.Vote).filter(
-        models.Vote.user_id == current_user.id,
-        models.Vote.video_id == video_id
-    ).first()
+    existing_vote = (
+        db.query(models.Vote)
+        .filter(models.Vote.user_id == current_user.id, models.Vote.video_id == video_id)
+        .first()
+    )
 
     if existing_vote:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ya has votado por este video"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Ya has votado por este video"
         )
 
     # Create new vote
-    new_vote = models.Vote(
-        user_id=current_user.id,
-        video_id=video_id
-    )
+    new_vote = models.Vote(user_id=current_user.id, video_id=video_id)
 
     db.add(new_vote)
     db.commit()
 
     # Get updated vote count
-    total_votes = db.query(func.count(models.Vote.id)).filter(
-        models.Vote.video_id == video_id
-    ).scalar()
+    total_votes = (
+        db.query(func.count(models.Vote.id)).filter(models.Vote.video_id == video_id).scalar()
+    )
 
     return {
         "message": "Voto registrado exitosamente.",
         "video_id": video_id,
-        "total_votes": total_votes or 0
+        "total_votes": total_votes or 0,
     }
 
 
-@router.get(
-    "/rankings",
-    response_model=RankingResponse,
-    status_code=status.HTTP_200_OK
-)
+@router.get("/rankings", response_model=RankingResponse, status_code=status.HTTP_200_OK)
 async def get_rankings(
-        page: int = Query(1, ge=1, description="Page number"),
-        page_size: int = Query(20, ge=1, le=100, description="Items per page"),
-        db: Session = Depends(get_db),
+    page: int = Query(1, ge=1, description="Page number"),
+    page_size: int = Query(20, ge=1, le=100, description="Items per page"),
+    db: Session = Depends(get_db),
 ):
     """
     Get player rankings based on total votes.
@@ -157,23 +138,20 @@ async def get_rankings(
             models.User.city,
             models.User.country,
             models.Video.id.label("video_id"),
-            func.count(models.Vote.id).label("vote_count")
+            func.count(models.Vote.id).label("vote_count"),
         )
         .join(models.Video, models.User.id == models.Video.user_id)
         .outerjoin(models.Vote, models.Video.id == models.Vote.video_id)
-        .filter(
-            models.Video.status.in_(["processed", "completed"])
-        )
+        .filter(models.Video.status.in_(["processed", "completed"]))
         .group_by(
             models.User.id,
             models.User.first_name,
             models.User.last_name,
             models.User.city,
             models.User.country,
-            models.Video.id
+            models.Video.id,
         )
     )
-
 
     # Order by votes descending
     query = query.order_by(desc("vote_count"))
@@ -189,19 +167,21 @@ async def get_rankings(
     # Build response
     rankings = []
     for idx, result in enumerate(results, start=skip + 1):
-        rankings.append({
-            "position": idx,
-            "username": f"{result.first_name} {result.last_name}",
-            "city": result.city,
-            "country": result.country,
-            "votes": result.vote_count,
-            "video_id": str(result.video_id)
-        })
+        rankings.append(
+            {
+                "position": idx,
+                "username": f"{result.first_name} {result.last_name}",
+                "city": result.city,
+                "country": result.country,
+                "votes": result.vote_count,
+                "video_id": str(result.video_id),
+            }
+        )
 
     return {
         "rankings": rankings,
         "total": total,
         "page": page,
         "page_size": page_size,
-        "total_pages": total_pages
+        "total_pages": total_pages,
     }

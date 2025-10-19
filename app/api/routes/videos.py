@@ -156,5 +156,5 @@ def get_video_detail(
         "processed_url": f"https://anb.com/processed/{video.id}.mp4"
         if video.status == "processed"
         else None,
-        "votes":  video.vote_count,
+        "votes": video.vote_count,
     }

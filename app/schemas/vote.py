@@ -1,12 +1,12 @@
 """Vote schemas"""
 
 from pydantic import BaseModel, Field
-from typing import Optional
 from datetime import datetime
 
 
 class VoteResponse(BaseModel):
     """Response after voting"""
+
     message: str = Field(..., example="Voto registrado exitosamente.")
     video_id: str
     total_votes: int
@@ -14,6 +14,7 @@ class VoteResponse(BaseModel):
 
 class PublicVideoResponse(BaseModel):
     """Public video details for voting"""
+
     video_id: str
     title: str
     player_name: str
@@ -29,6 +30,7 @@ class PublicVideoResponse(BaseModel):
 
 class RankingEntry(BaseModel):
     """Single ranking entry"""
+
     position: int
     username: str
     city: str
@@ -42,6 +44,7 @@ class RankingEntry(BaseModel):
 
 class RankingResponse(BaseModel):
     """Ranking response with pagination info"""
+
     rankings: list[RankingEntry]
     total: int
     page: int

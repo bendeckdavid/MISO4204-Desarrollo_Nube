@@ -114,13 +114,14 @@ def get_current_user(
 
     return user
 
+
 # Define optional OAuth2 scheme
 oauth2_scheme_optional = HTTPBearer(auto_error=False)
 
 
 def get_current_user_optional(
-        credentials: Optional[HTTPAuthorizationCredentials] = Depends(oauth2_scheme_optional),
-        db: Session = Depends(get_db)
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(oauth2_scheme_optional),
+    db: Session = Depends(get_db),
 ) -> Optional[models.User]:
     """
     Get current user if token is provided, otherwise return None.
@@ -146,5 +147,3 @@ def get_current_user_optional(
         return None
     except Exception:
         return None
-
-
