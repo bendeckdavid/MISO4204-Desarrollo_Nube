@@ -94,3 +94,35 @@ def list_user_videos(
         response.append(video_data)
 
     return response
+
+
+@router.get("/{video_id}", response_model=VideoDetailResponse, status_code=status.HTTP_200_OK)
+def get_video_detail(
+    video_id: str,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Get detailed information about a specific video.
+    Includes URLs for download/preview if available.
+    """
+
+    video = db.query(models.Video).filter(models.Video.id == video_id).first()
+    if not video:
+        raise HTTPException(status_code=404, detail="Video not found")
+
+    # Validar que el video pertenece al usuario autenticado
+    if video.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Forbidden: this video does not belong to you")
+
+    # Crear la respuesta
+    return {
+        "video_id": str(video.id),
+        "title": video.title,
+        "status": video.status,
+        "uploaded_at": video.created_at.isoformat() if hasattr(video, "created_at") else None,
+        "processed_at": video.updated_at.isoformat() if hasattr(video, "updated_at") else None,
+        "original_url": f"https://anb.com/uploads/{video.id}.mp4",
+        "processed_url": f"https://anb.com/processed/{video.id}.mp4" if video.status == "processed" else None,
+        "votes": getattr(video, "votes", 0),
+    }
