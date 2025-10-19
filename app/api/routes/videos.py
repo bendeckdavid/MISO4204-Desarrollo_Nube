@@ -8,7 +8,7 @@ from app.core.config import settings
 from app.core.security import get_current_user
 from app.db import models
 from app.db.database import get_db
-from app.schemas.video import VideoUploadResponse, VideoUploadRequest, VideoDetailResponse
+from app.schemas.video import VideoUploadResponse, VideoDetailResponse
 from app.worker.videos import process_video
 import os
 
@@ -79,6 +79,7 @@ async def upload_video(
         # Verify the saved file
         if os.path.exists(video_file_path):
             file_size = os.path.getsize(video_file_path)
+            print(file_size)
         else:
             raise FileNotFoundError("File was not saved properly")
 
@@ -151,6 +152,8 @@ def get_video_detail(
         "uploaded_at": video.created_at.isoformat() if hasattr(video, "created_at") else None,
         "processed_at": video.updated_at.isoformat() if hasattr(video, "updated_at") else None,
         "original_url": f"https://anb.com/uploads/{video.id}.mp4",
-        "processed_url": f"https://anb.com/processed/{video.id}.mp4" if video.status == "processed" else None,
+        "processed_url": f"https://anb.com/processed/{video.id}.mp4"
+        if video.status == "processed"
+        else None,
         "votes": getattr(video, "votes", 0),
     }

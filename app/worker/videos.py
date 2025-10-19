@@ -123,7 +123,6 @@ def process_video(self, video_id: str):
         return {"status": "success", "message": f"Video {video_id} processed successfully"}
 
     except Exception as e:
-
         # Update video status to failed
         try:
             video = db.query(Video).filter(Video.id == video_id).first()
