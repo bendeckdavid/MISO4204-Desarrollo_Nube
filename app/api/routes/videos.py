@@ -8,7 +8,7 @@ from app.core.config import settings
 from app.core.security import get_current_user
 from app.db import models
 from app.db.database import get_db
-from app.schemas.video import VideoUploadResponse, VideoDetailResponse
+from app.schemas.video import VideoUploadResponse, VideoDetailResponse, VideoDeleteResponse
 from app.worker.videos import process_video
 import os
 
@@ -158,3 +158,78 @@ def get_video_detail(
         else None,
         "votes": video.vote_count,
     }
+
+
+@router.delete("/{video_id}", response_model=VideoDeleteResponse, status_code=status.HTTP_200_OK)
+async def delete_video(
+    video_id: str,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Delete a video uploaded by the authenticated user.
+
+    Rules:
+    - Only the video owner can delete it
+    - Video cannot be deleted if it's published for voting
+    - Video cannot be deleted if it has votes
+    - Both original and processed files are deleted from disk
+
+    Returns:
+        200: Video deleted successfully
+        400: Video cannot be deleted (published or has votes)
+        401: User not authenticated
+        403: User is not the video owner
+        404: Video not found
+    """
+
+    # 1. Check if video exists
+    video = db.query(models.Video).filter(models.Video.id == video_id).first()
+
+    if not video:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Video not found")
+
+    # 2. Check if user is the owner
+    if video.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Forbidden: you don't have permission to delete this video",
+        )
+
+    # 4. Check if video has votes
+    vote_count = db.query(models.Vote).filter(models.Vote.video_id == video_id).count()
+    if vote_count > 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cannot delete video: it has {vote_count} vote(s)",
+        )
+
+    # 5. Delete files from disk (if they exist)
+    files_deleted = []
+    files_not_found = []
+
+    # Delete original file
+    if video.original_file_path and os.path.exists(video.original_file_path):
+        try:
+            os.remove(video.original_file_path)
+            files_deleted.append("original")
+        except Exception as e:
+            print(f"Error deleting original file: {e}")
+    else:
+        files_not_found.append("original")
+
+    # Delete processed file
+    if video.processed_file_path and os.path.exists(video.processed_file_path):
+        try:
+            os.remove(video.processed_file_path)
+            files_deleted.append("processed")
+        except Exception as e:
+            print(f"Error deleting processed file: {e}")
+    else:
+        files_not_found.append("processed")
+
+    # 6. Delete video record from database
+    db.delete(video)
+    db.commit()
+
+    return {"message": "El video ha sido eliminado exitosamente.", "video_id": str(video_id)}

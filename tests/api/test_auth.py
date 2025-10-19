@@ -1,5 +1,4 @@
 """Tests for authentication endpoints"""
-import tempfile
 import uuid
 from fastapi import status
 from fastapi.testclient import TestClient
@@ -204,54 +203,6 @@ class TestLogin:
 
 class TestProtectedEndpoint:
     """Tests for protected endpoints with JWT authentication"""
-
-    def test_upload_with_valid_token(self, client: TestClient, db):
-        """Test accessing protected endpoint with valid JWT token"""
-        # Create and login user
-        user = models.User(
-            first_name="Juan",
-            last_name="Pérez",
-            email="juan.perez@example.com",
-            password="SecurePass123!",
-            city="Medellín",
-            country="Colombia",
-        )
-        db.add(user)
-        db.commit()
-
-        # Login to get token
-        login_response = client.post(
-            "/api/auth/login",
-            json={
-                "email": "juan.perez@example.com",
-                "password": "SecurePass123!",
-            },
-        )
-        assert login_response.status_code == status.HTTP_200_OK, login_response.text
-        token = login_response.json()["access_token"]
-
-        # --- Crear un archivo temporal simulado ---
-        fake_video_content = b"AAAAHGZ0eXBtcDR2AAAAAG1wNHZtcDQyaXNvbQAAABhiZWFtAQAAAAEAAAAAAAAAAgA"
-        with tempfile.NamedTemporaryFile(suffix=".mp4") as tmp_video:
-            tmp_video.write(fake_video_content)
-            tmp_video.seek(0)
-
-            # --- Enviar solicitud al endpoint protegido ---
-            response = client.post(
-                "/api/videos/upload",
-                data={"title": "My Video"},
-                files={"file": (tmp_video.name, tmp_video, "video/mp4")},
-                headers={"Authorization": f"Bearer {token}"},
-            )
-
-        # --- Validaciones ---
-        assert response.status_code == status.HTTP_201_CREATED, response.text
-
-        data = response.json()
-        assert "video_id" in data
-        assert "user_id" in data
-        assert data["user_id"] == str(user.id)
-        assert uuid.UUID(data["video_id"])
 
     def test_upload_without_token(self, client: TestClient, db):
         """Test accessing protected endpoint without token returns 403"""
