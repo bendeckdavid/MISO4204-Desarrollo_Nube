@@ -112,6 +112,7 @@ def list_user_videos(
             "title": video.title,
             "status": video.status,
             "uploaded_at": video.created_at.isoformat() if hasattr(video, "created_at") else None,
+            "votes": video.vote_count,
         }
 
         if video.status == "processed" or video.status == "completed":
@@ -155,5 +156,5 @@ def get_video_detail(
         "processed_url": f"https://anb.com/processed/{video.id}.mp4"
         if video.status == "processed"
         else None,
-        "votes": getattr(video, "votes", 0),
+        "votes":  video.vote_count,
     }

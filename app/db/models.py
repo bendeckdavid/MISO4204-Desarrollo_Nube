@@ -2,7 +2,8 @@
 
 import bcrypt
 import uuid
-from sqlalchemy import Column, String, ForeignKey, Boolean
+from datetime import datetime
+from sqlalchemy import Column, String, ForeignKey, Boolean , DateTime, UniqueConstraint
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.hybrid import hybrid_property
@@ -28,6 +29,8 @@ class User(Base):
     country = Column(String(100), nullable=False)
 
     videos = relationship("Video", back_populates="user")
+    votes = relationship("Vote", back_populates="user", cascade="all, delete-orphan")
+
 
     @hybrid_property
     def password(self):
@@ -65,6 +68,7 @@ class Video(Base):
 
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     user = relationship("User", back_populates="videos")
+    votes = relationship("Vote", back_populates="video", cascade="all, delete-orphan")
 
     title = Column(String, nullable=False)
     original_file_path = Column(String, nullable=False)
@@ -73,5 +77,32 @@ class Video(Base):
     status = Column(String, nullable=False, default="pending")
     is_published = Column(Boolean, nullable=False, default=False)
 
+    @hybrid_property
+    def vote_count(self):
+        """Get the number of votes for this video"""
+        return len(self.votes) if self.votes else 0
+
     def __repr__(self):
         return f"<Video {self.title}>"
+
+
+class Vote(Base):
+    """Vote model - tracks user votes for videos"""
+
+    __tablename__ = "votes"
+
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    video_id = Column(UUID(as_uuid=True), ForeignKey("videos.id"), nullable=False, index=True)
+    voted_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+    # Relationships
+    user = relationship("User", back_populates="votes")
+    video = relationship("Video", back_populates="votes")
+
+    # Unique constraint: one vote per user per video
+    __table_args__ = (
+        UniqueConstraint('user_id', 'video_id', name='uq_user_video_vote'),
+    )
+
+    def __repr__(self):
+        return f"<Vote user={self.user_id} video={self.video_id}>"

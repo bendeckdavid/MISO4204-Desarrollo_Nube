@@ -113,3 +113,38 @@ def get_current_user(
         )
 
     return user
+
+# Define optional OAuth2 scheme
+oauth2_scheme_optional = HTTPBearer(auto_error=False)
+
+
+def get_current_user_optional(
+        credentials: Optional[HTTPAuthorizationCredentials] = Depends(oauth2_scheme_optional),
+        db: Session = Depends(get_db)
+) -> Optional[models.User]:
+    """
+    Get current user if token is provided, otherwise return None.
+    Does NOT raise error if token is missing.
+    """
+    if credentials is None:
+        return None
+
+    try:
+        # Decodificar el token
+        token = credentials.credentials
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        user_id: str = payload.get("sub")
+
+        if user_id is None:
+            return None
+
+        # Buscar usuario
+        user = db.query(models.User).filter(models.User.id == user_id).first()
+        return user
+
+    except JWTError:
+        return None
+    except Exception:
+        return None
+
+
