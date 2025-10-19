@@ -14,7 +14,7 @@ class VideoUploadRequest(BaseModel):
 class VideoUploadResponse(BaseModel):
     """Schema for video response"""
 
-    id: str
+    video_id: str
     user_id: str
 
 
