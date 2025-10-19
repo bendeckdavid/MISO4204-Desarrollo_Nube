@@ -3,7 +3,7 @@
 from fastapi import APIRouter, Depends, status, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc
-from typing import List
+from typing import List, Optional
 import math
 
 from app.core.security import get_current_user
@@ -111,25 +111,31 @@ async def vote_for_video(
     }
 
 
-@router.get("/rankings", response_model=RankingResponse, status_code=status.HTTP_200_OK)
-async def get_rankings(
-    page: int = Query(1, ge=1, description="Page number"),
-    page_size: int = Query(20, ge=1, le=100, description="Items per page"),
+@router.get("/rankings", response_model=RankingResponse)
+def get_rankings(
+    city: Optional[str] = Query(None, description="Filter by city (e.g., 'Bogotá')"),
+    page: int = Query(1, ge=1, description="Page number (starts at 1)"),
+    page_size: int = Query(20, ge=1, le=100, description="Items per page (max 100)"),
     db: Session = Depends(get_db),
 ):
     """
     Get player rankings based on total votes.
 
-    Returns:
-    - Top players ordered by vote count
-    - Supports pagination
-    - Optional city filtering
+    NO AUTHENTICATION REQUIRED - This is a public endpoint.
 
-    Recommendation: Consider implementing Redis caching for this endpoint
-    with a TTL of 1-5 minutes to reduce database load.
+    Features:
+    - Returns top players ordered by vote count (descending)
+    - Supports pagination (page and page_size)
+    - Optional filter by city
+
+    Performance Note:
+    ⚠️ For high-traffic production environments, consider implementing:
+       - Redis caching with TTL (1-5 minutes)
+       - PostgreSQL materialized views
+       - Background job to pre-calculate rankings
     """
 
-    # Build query with vote counting
+    # Build query: count votes per player
     query = (
         db.query(
             models.User.id,
@@ -137,7 +143,6 @@ async def get_rankings(
             models.User.last_name,
             models.User.city,
             models.User.country,
-            models.Video.id.label("video_id"),
             func.count(models.Vote.id).label("vote_count"),
         )
         .join(models.Video, models.User.id == models.Video.user_id)
@@ -149,22 +154,25 @@ async def get_rankings(
             models.User.last_name,
             models.User.city,
             models.User.country,
-            models.Video.id,
         )
     )
+
+    # Apply city filter if provided
+    if city:
+        query = query.filter(models.User.city == city)
 
     # Order by votes descending
     query = query.order_by(desc("vote_count"))
 
     # Get total count for pagination
     total = query.count()
-    total_pages = math.ceil(total / page_size)
+    total_pages = math.ceil(total / page_size) if total > 0 else 0
 
     # Apply pagination
     skip = (page - 1) * page_size
     results = query.offset(skip).limit(page_size).all()
 
-    # Build response
+    # Build response with position numbers
     rankings = []
     for idx, result in enumerate(results, start=skip + 1):
         rankings.append(
@@ -174,7 +182,6 @@ async def get_rankings(
                 "city": result.city,
                 "country": result.country,
                 "votes": result.vote_count,
-                "video_id": str(result.video_id),
             }
         )
 
