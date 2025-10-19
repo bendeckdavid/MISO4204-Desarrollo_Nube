@@ -1,5 +1,5 @@
 """Tests for authentication endpoints"""
-
+import tempfile
 import uuid
 from fastapi import status
 from fastapi.testclient import TestClient
@@ -227,26 +227,40 @@ class TestProtectedEndpoint:
                 "password": "SecurePass123!",
             },
         )
+        assert login_response.status_code == status.HTTP_200_OK, login_response.text
         token = login_response.json()["access_token"]
 
-        # Access protected endpoint
-        response = client.post(
-            "/api/videos/upload",
-            json={"test": "Mi video de habilidades"},
-            headers={"Authorization": f"Bearer {token}"},
-        )
+        # --- Crear un archivo temporal simulado ---
+        fake_video_content = b"AAAAHGZ0eXBtcDR2AAAAAG1wNHZtcDQyaXNvbQAAABhiZWFtAQAAAAEAAAAAAAAAAgA"
+        with tempfile.NamedTemporaryFile(suffix=".mp4") as tmp_video:
+            tmp_video.write(fake_video_content)
+            tmp_video.seek(0)
 
-        assert response.status_code == status.HTTP_201_CREATED
+            # --- Enviar solicitud al endpoint protegido ---
+            response = client.post(
+                "/api/videos/upload",
+                data={"title": "My Video"},
+                files={"file": (tmp_video.name, tmp_video, "video/mp4")},
+                headers={"Authorization": f"Bearer {token}"},
+            )
+
+        # --- Validaciones ---
+        assert response.status_code == status.HTTP_201_CREATED, response.text
+
         data = response.json()
-        assert "id" in data
+        assert "video_id" in data
         assert "user_id" in data
         assert data["user_id"] == str(user.id)
+        assert uuid.UUID(data["video_id"])
 
     def test_upload_without_token(self, client: TestClient, db):
         """Test accessing protected endpoint without token returns 403"""
         response = client.post(
             "/api/videos/upload",
-            json={"test": "Mi video de habilidades"},
+            json={
+                "title": "My Video",
+                "file": "AAAAHGZ0eXBtcDR2AAAAAG1wNHZtcDQyaXNvbQAAABhiZWFtAQAAAAEAAAAAAAAAAgA",
+            },
         )
 
         assert response.status_code == status.HTTP_403_FORBIDDEN
@@ -255,7 +269,10 @@ class TestProtectedEndpoint:
         """Test accessing protected endpoint with invalid token returns 401"""
         response = client.post(
             "/api/videos/upload",
-            json={"test": "Mi video de habilidades"},
+            json={
+                "title": "My Video",
+                "file": "AAAAHGZ0eXBtcDR2AAAAAG1wNHZtcDQyaXNvbQAAABhiZWFtAQAAAAEAAAAAAAAAAgA",
+            },
             headers={"Authorization": "Bearer invalid-token-12345"},
         )
 
@@ -265,7 +282,10 @@ class TestProtectedEndpoint:
         """Test accessing protected endpoint with malformed auth header"""
         response = client.post(
             "/api/videos/upload",
-            json={"test": "Mi video de habilidades"},
+            json={
+                "title": "My Video",
+                "file": "AAAAHGZ0eXBtcDR2AAAAAG1wNHZtcDQyaXNvbQAAABhiZWFtAQAAAAEAAAAAAAAAAgA",
+            },
             headers={"Authorization": "InvalidFormat token123"},
         )
 

@@ -363,6 +363,51 @@ Content-Type: application/json
 - **401 Unauthorized** - Missing or invalid JWT token
 - **422 Unprocessable Entity** - Validation error
 
+### 5️⃣ List User Videos
+
+**Endpoint:** `GET /api/videos/`
+
+**Description:**  Retrieve all videos uploaded by the authenticated user (protected endpoint)
+
+**Authentication:** Required (JWT token)
+
+**Request:**
+```bash
+curl -X GET http://localhost:8000/api/videos/ \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN_HERE"
+```
+
+**Request Headers:**
+```
+Authorization: Bearer <jwt_token>
+```
+
+
+**Response (200 OK):**
+```json
+[
+  {
+    "video_id": "example-video-id-1",
+    "title": "Mi primer video",
+    "status": "completed",
+    "uploaded_at": "2025-10-18T16:30:00",
+    "processed_at": "2025-10-18T16:45:00",
+    "processed_url": "https://anb.com/videos/processed/example-video-id-1.mp4"
+  },
+  {
+    "video_id": "example-video-id-2",
+    "title": "Mi segundo video",
+    "status": "pending",
+    "uploaded_at": "2025-10-18T17:00:00"
+  }
+]
+```
+
+**Error Responses:**
+- **401 Unauthorized** - Missing or invalid JWT token
+
+
+
 ---
 
 ## 🧪 Testing the API
