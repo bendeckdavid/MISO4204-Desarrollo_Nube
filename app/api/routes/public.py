@@ -31,7 +31,7 @@ async def list_public_videos(
     query = (
         db.query(models.Video)
         .filter(models.Video.status.in_(["processed", "completed"]))
-        .filter(models.Video.is_published == True)
+        .filter(models.Video.is_published.is_(True))
         .join(models.User)
     )
 
@@ -149,7 +149,7 @@ def get_rankings(
         .join(models.Video, models.User.id == models.Video.user_id)
         .outerjoin(models.Vote, models.Video.id == models.Vote.video_id)
         .filter(models.Video.status.in_(["processed", "completed"]))
-        .filter(models.Video.is_published == True)
+        .filter(models.Video.is_published.is_(True))
         .group_by(
             models.User.id,
             models.User.first_name,
