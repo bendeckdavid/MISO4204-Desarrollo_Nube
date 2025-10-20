@@ -19,11 +19,23 @@ from app.db.database import engine
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifecycle events"""
+    # Startup: Create database tables
+    # Note: With multiple Gunicorn workers, only one needs to create tables
+    # We use a simple approach: try to create, ignore if they already exist
     try:
+        # Import models to ensure they're registered with Base
+        from app.db import models  # noqa: F401
+
+        # Create all tables (checkfirst=True ensures it only creates if not exists)
         Base.metadata.create_all(bind=engine, checkfirst=True)
+        print("✓ Database tables initialized successfully")
     except Exception as e:
-        print(f"Note: Tables might already exist (this is normal with multiple workers): {e}")
+        # If tables already exist or there's a race condition, that's fine
+        print(f"Note: Database initialization handled by another worker or tables exist: {e}")
+
     yield
+    # Shutdown: Cleanup if needed
+
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
