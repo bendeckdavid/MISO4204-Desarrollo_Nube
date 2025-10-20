@@ -1,5 +1,6 @@
 """Tests for video management endpoints"""
 import io
+from unittest.mock import patch, MagicMock
 from fastapi import status
 from fastapi.testclient import TestClient
 
@@ -10,8 +11,28 @@ from app.core.security import create_access_token
 class TestVideoUpload:
     """Tests for video upload endpoint"""
 
-    def test_upload_video_success(self, client: TestClient, db):
+    @patch("app.api.routes.videos.process_video")
+    @patch("app.api.routes.videos.os.path.exists")
+    @patch("app.api.routes.videos.os.path.getsize")
+    @patch("app.api.routes.videos.os.makedirs")
+    @patch("builtins.open", create=True)
+    def test_upload_video_success(
+        self,
+        mock_open,
+        mock_makedirs,
+        mock_getsize,
+        mock_exists,
+        mock_process_video,
+        client: TestClient,
+        db,
+    ):
         """Test successful video upload"""
+        # Mock file operations
+        mock_exists.return_value = True
+        mock_getsize.return_value = 1024
+        mock_file = MagicMock()
+        mock_open.return_value.__enter__.return_value = mock_file
+
         # Create and login user
         user = models.User(
             first_name="Juan",
