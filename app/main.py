@@ -47,6 +47,12 @@ app.add_middleware(
 
 # Register routers
 app.include_router(health.router, tags=["Health"])
-app.include_router(auth.router, prefix=f"{settings.API_V1_STR}/auth", tags=["Authentication"])
-app.include_router(videos.router, prefix=f"{settings.API_V1_STR}/videos", tags=["Videos"])
-app.include_router(public.router, prefix=f"{settings.API_V1_STR}/public", tags=["Publicacion"])
+app.include_router(
+    auth.router, prefix=f"{settings.API_V1_STR}/auth", tags=["Authentication"]
+)
+app.include_router(
+    videos.router, prefix=f"{settings.API_V1_STR}/videos", tags=["Videos"]
+)
+app.include_router(
+    public.router, prefix=f"{settings.API_V1_STR}/public", tags=["Publicacion"]
+)
