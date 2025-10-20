@@ -19,17 +19,12 @@ from app.db.database import engine
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifecycle events"""
-    # Startup: Create database tables
-    # Note: create_all() is safe to call multiple times as it checks for existing tables
-    # We wrap in try/except to handle race conditions from multiple workers
     try:
         Base.metadata.create_all(bind=engine, checkfirst=True)
     except Exception as e:
-        # Log but don't fail - tables might already exist from another worker
         print(f"Note: Tables might already exist (this is normal with multiple workers): {e}")
     yield
-    # Shutdown: Cleanup if needed
-
+    
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -41,7 +36,7 @@ app = FastAPI(
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure for production
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
