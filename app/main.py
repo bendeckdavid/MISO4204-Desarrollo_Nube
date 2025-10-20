@@ -24,7 +24,6 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"Note: Tables might already exist (this is normal with multiple workers): {e}")
     yield
-    
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
