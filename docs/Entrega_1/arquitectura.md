@@ -419,17 +419,22 @@ CREATE UNIQUE INDEX idx_votes_unique ON votes(user_id, video_id);
 
 ### 6.1 Infraestructura Docker Compose
 
-![Diagrama de Despliegue](images/diagrama_despliegue.png)
+![Diagrama de Despliegue](images/modelo_despliegue.png)
 
-*Diagrama que muestra: Servidor/VM conteniendo Docker Compose con los 4 contenedores (FastAPI, PostgreSQL, Redis, Worker), los 3 volúmenes persistentes (postgres_data, video_uploads, video_processed), y las conexiones entre ellos. Cliente externo conectándose al puerto 80/8000.*
+*Diagrama que muestra la arquitectura de despliegue con Docker Compose, organizada en 3 capas: **API** (Nginx como balanceador de carga + API FastAPI), **Bases de datos** (PostgreSQL para usuarios y videos + Redis como Celery broker), y **Procesamiento en segundo plano** (Worker Celery con MoviePy). Los contenedores comparten un volumen de **Almacenamiento** con dos directorios: videos cargados y videos procesados.*
 
 ### 6.2 Componentes de Infraestructura
 
-**Contenedores:**
-- **FastAPI Container**: Puerto 8000 expuesto, conecta con todos los servicios
-- **PostgreSQL Container**: Puerto 5432, con volumen `postgres_data` para persistencia
-- **Redis Container**: Puerto 6379, broker de mensajes
-- **Celery Worker Container**: Sin puerto expuesto, procesa tareas en background
+**Capa API:**
+- **Nginx (Balanceo de carga)**: Puerto 8080 (host) → 80 (contenedor), balanceo con `least_conn`
+- **FastAPI Container**: Puerto 8000 interno, 4 workers Gunicorn + Uvicorn
+
+**Capa de Bases de Datos:**
+- **PostgreSQL Container**: Puerto 5433 (host) → 5432 (contenedor), almacena usuarios y videos con volumen `postgres_data`
+- **Redis Container**: Puerto 6380 (host) → 6379 (contenedor), Celery broker
+
+**Capa de Procesamiento:**
+- **Celery Worker Container**: Sin puerto expuesto, procesa videos con MoviePy en background
 
 **Volúmenes Persistentes:**
 - **postgres_data**: Almacena datos de PostgreSQL (usuarios, videos, metadatos)
