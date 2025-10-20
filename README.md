@@ -21,6 +21,7 @@ API para la gestión de videos de artistas emergentes con sistema de votación y
 - [Inicio Rápido](#-inicio-rápido)
 - [Estructura del Proyecto](#-estructura-del-proyecto)
 - [Documentación](#-documentación)
+- [Video de Sustentación](#-video-de-sustentación)
 - [API Endpoints](#-api-endpoints)
 - [Ejemplos de Uso](#-ejemplos-de-uso)
 - [Tests](#-tests)
@@ -172,6 +173,7 @@ MISO4204-Desarrollo_Nube/
 | **Arquitectura del Sistema** | [docs/Entrega_1/arquitectura.md](docs/Entrega_1/arquitectura.md) | Documentación completa incluyendo:<br>• Diagramas C4 (Contexto y Contenedores)<br>• Diagramas de secuencia<br>• Decisiones de diseño<br>• Contratos de API<br>• Stack tecnológico |
 | **Decisiones de Diseño** | [docs/Entrega_1/decisiones_diseno.md](docs/Entrega_1/decisiones_diseno.md) | Decisiones arquitectónicas y justificaciones |
 | **Modelo de Datos** | [docs/Entrega_1/modelo_datos.md](docs/Entrega_1/modelo_datos.md) | Modelo relacional y relaciones entre entidades |
+| **Reporte SonarQube** | [docs/Entrega_1/reporte_sonarqube.md](docs/Entrega_1/reporte_sonarqube.md) | Análisis de calidad de código, cobertura, seguridad y mantenibilidad |
 | **Pruebas de Carga** | [docs/Entrega_1/pruebas_carga/reporte.md](docs/Entrega_1/pruebas_carga/reporte.md) | Resultados y análisis de pruebas de rendimiento |
 | **Colección de Postman** | [collections/README.md](collections/README.md) | Guía completa para usar la colección con Postman y Newman |
 
@@ -183,6 +185,60 @@ Todos los diagramas están disponibles como imágenes en [`docs/Entrega_1/images
 - **[Diagrama de Contenedores (C4)](docs/Entrega_1/images/modelo_contenedores.png)** - Arquitectura de contenedores
 - **[Diagrama de Secuencia](docs/Entrega_1/images/modelo_secuencia.png)** - Flujo de procesamiento de videos
 - **[Modelo Relacional](docs/Entrega_1/images/modelo_relacional.jpeg)** - Estructura de base de datos
+
+### Reporte de Calidad
+
+El proyecto incluye un análisis exhaustivo de calidad de código realizado con SonarQube:
+
+- **[Reporte SonarQube](docs/Entrega_1/reporte_sonarqube.md)** - Análisis completo de calidad, cobertura y seguridad
+  - Quality Gate: ✅ PASSED
+  - Code Coverage: 100%
+  - Code Duplications: 0.0%
+  - Security Rating: A
+  - Reliability Rating: C (3 minor issues)
+  - Maintainability Rating: A
+
+---
+
+## 🎥 Video de Sustentación
+
+### Demostración del Proyecto
+
+A continuación se presenta el video de sustentación donde se demuestra el funcionamiento completo del sistema **ANB Rising Stars Showcase API**, incluyendo:
+
+- Arquitectura del sistema y decisiones de diseño
+- Demostración de endpoints de autenticación (registro y login)
+- Carga y procesamiento asíncrono de videos con Celery
+- Sistema de votación y rankings públicos
+- Análisis de cobertura de tests (79% pytest, 100% SonarQube)
+- Resultados de pruebas de carga con K6
+- Reporte de calidad de código con SonarQube
+
+### 📹 Enlace al Video
+
+> **[Aquí se colocará el enlace al video de sustentación]**
+>
+> _Nota: El video será publicado próximamente_
+
+**Duración aproximada:** 15-20 minutos
+
+**Contenido del video:**
+1. Introducción al proyecto y objetivos (2 min)
+2. Arquitectura y stack tecnológico (3 min)
+3. Demostración de funcionalidades principales (8 min)
+   - Registro y autenticación de usuarios
+   - Upload y procesamiento de videos
+   - Votación por videos publicados
+   - Consulta de rankings por ciudad
+4. Métricas de calidad y testing (4 min)
+   - Cobertura de tests con pytest (79%, 40 tests)
+   - Análisis SonarQube (Quality Gate: Passed, Coverage: 100%)
+   - Pruebas de carga con K6
+5. Conclusiones y trabajo futuro (2 min)
+
+**Plataforma de visualización:** YouTube / Vimeo
+
+---
 
 ## 🔌 API Endpoints
 
