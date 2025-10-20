@@ -348,6 +348,7 @@ curl -X POST http://localhost:8080/api/auth/login \
 export TOKEN="tu_access_token_aqui"
 
 # Subir video con archivo
+# El video debe existir si se prueba con curl
 curl -X POST http://localhost:8080/api/videos/upload \
   -H "Authorization: Bearer $TOKEN" \
   -F "file=@/ruta/a/tu/video.mp4" \
@@ -410,6 +411,8 @@ curl -X GET http://localhost:8080/api/videos/ \
 ### 6. Obtener Detalles de un Video (requiere JWT)
 
 ```bash
+# Cambiar el video_id
+
 curl -X GET http://localhost:8080/api/videos/{video_id} \
   -H "Authorization: Bearer $TOKEN"
 ```
@@ -433,8 +436,8 @@ curl -X GET http://localhost:8080/api/videos/{video_id} \
 ---
 
 ### 7. Eliminar Video (requiere JWT)
-
 ```bash
+# Cambiar el video_id
 curl -X DELETE http://localhost:8080/api/videos/{video_id} \
   -H "Authorization: Bearer $TOKEN"
 ```

@@ -12,8 +12,6 @@ Este documento presenta los resultados del análisis de calidad de código reali
 
 **Branch:** `main`
 
-![SonarQube Status](images/sonarqube_status.png)
-
 El proyecto cumple con todos los criterios establecidos en el Quality Gate, garantizando que el código en producción mantiene estándares de calidad aceptables.
 
 ---
@@ -30,8 +28,6 @@ El proyecto cumple con todos los criterios establecidos en el Quality Gate, gara
 | **Security Hotspots** | **0** | ✅ Excelente |
 | **Reliability Issues** | 3 (Rating: C) | ⚠️ Para revisar |
 | **Maintainability Issues** | 2 (Rating: A) | ✅ Bueno |
-
-![SonarQube Summary](images/sonarqube_summary.png)
 
 ### Análisis Detallado
 
@@ -143,8 +139,6 @@ Solo se detectaron 2 code smells menores, lo que indica un código muy limpio y 
 ---
 
 ## 🎯 Análisis Comparativo - Código Nuevo vs. Código General
-
-![SonarQube Overall](images/sonarqube_overall.png)
 
 ### Métricas en Código Nuevo
 
@@ -303,10 +297,6 @@ El código demuestra:
 - **Seguridad:** Sin vulnerabilidades conocidas
 - **Mantenibilidad:** Código limpio y bien estructurado
 
-### Recomendación
-
-**Recomendamos desplegar el proyecto a producción** con la condición de abordar los 3 issues de confiabilidad en el próximo sprint de mantenimiento. El sistema es estable, seguro y está bien testeado.
-
 ---
 
 ## 📚 Referencias
@@ -315,22 +305,3 @@ El código demuestra:
 - [SonarQube Quality Gates](https://docs.sonarqube.org/latest/user-guide/quality-gates/)
 - [SonarQube Metric Definitions](https://docs.sonarqube.org/latest/user-guide/metric-definitions/)
 - [Clean Code Best Practices](https://www.sonarsource.com/learn/clean-code/)
-
----
-
-## 📅 Información del Reporte
-
-- **Fecha de análisis:** Octubre 19, 2025
-- **Branch analizado:** `main`
-- **Versión de SonarQube:** Community Edition
-- **Total de líneas analizadas:** 773 LOC
-- **Autor del reporte:** Equipo de Desarrollo ANB
-- **Próxima revisión:** Sprint 2
-
----
-
-**Nota:** Este reporte está basado en el análisis estático de código realizado por SonarQube. Para una evaluación completa de la calidad del proyecto, se recomienda complementar con:
-- Revisiones de código por pares
-- Pruebas de carga y rendimiento
-- Auditoría de seguridad externa
-- Análisis de vulnerabilidades de dependencias

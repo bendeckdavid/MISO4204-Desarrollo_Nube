@@ -9,6 +9,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 
 from app.api.routes import auth, health, videos, public
 from app.core.config import settings
@@ -17,14 +18,17 @@ from app.db.database import engine
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI):  # pragma: no cover
     """Lifecycle events"""
-    try:  # pragma: no cover
-        from app.db import models  # noqa: F401
+    with engine.connect() as conn:
+        try:
+            conn.execute(text("SELECT pg_advisory_lock(123456789)"))
+            from app.db import models  # noqa: F401
 
-        Base.metadata.create_all(bind=engine, checkfirst=True)
-    except Exception as e:  # pragma: no cover
-        print(f"Note: Tables might already exist: {e}")  # pragma: no cover
+            Base.metadata.create_all(bind=engine, checkfirst=True)
+        finally:
+            conn.execute(text("SELECT pg_advisory_unlock(123456789)"))
+            conn.commit()
     yield
 
 
