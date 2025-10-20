@@ -201,6 +201,69 @@ class TestLogin:
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
 
+class TestTokenFunctions:
+    """Tests for JWT token creation and validation"""
+
+    def test_create_token_with_custom_expiration(self, client: TestClient, db):
+        """Test creating token with custom expiration"""
+        from datetime import timedelta
+        from app.core.security import create_access_token
+
+        user = models.User(
+            first_name="Test",
+            last_name="User",
+            email="token@test.com",
+            password="SecurePass123!",
+            city="Bogotá",
+            country="Colombia",
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+        # Create token with custom 1-minute expiration
+        token = create_access_token(
+            data={"sub": str(user.id)},
+            expires_delta=timedelta(minutes=1)
+        )
+
+        # Token should work immediately
+        response = client.get(
+            "/api/videos",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert response.status_code == status.HTTP_200_OK
+
+    def test_token_missing_sub(self, client: TestClient, db):
+        """Test token without 'sub' claim"""
+        from app.core.security import create_access_token
+
+        # Create token without 'sub' field
+        token = create_access_token(data={"user": "invalid"})
+
+        response = client.get(
+            "/api/videos",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    def test_token_with_nonexistent_user(self, client: TestClient, db):
+        """Test token with valid format but non-existent user"""
+        from app.core.security import create_access_token
+        import uuid
+
+        # Create token with non-existent user ID
+        fake_user_id = str(uuid.uuid4())
+        token = create_access_token(data={"sub": fake_user_id})
+
+        response = client.get(
+            "/api/videos",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        assert "User not found" in response.json()["detail"]
+
+
 class TestProtectedEndpoint:
     """Tests for protected endpoints with JWT authentication"""
 
