@@ -252,7 +252,7 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/api/videos",
+              "raw": "{{base_url}}/api/videos/",
               "host": ["{{base_url}}"],
               "path": ["api", "videos"]
             },
