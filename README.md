@@ -12,7 +12,7 @@ A production-ready FastAPI template with JWT Authentication, PostgreSQL, Celery,
 - ✅ **Docker Compose** - Multi-container orchestration
 - ✅ **Pydantic v2** - Data validation with environment-based configuration
 - ✅ **Poetry** - Modern dependency management
-- ✅ **pytest** - Comprehensive test suite with 87% coverage
+- ✅ **pytest** - Comprehensive test suite with 79% coverage (40 tests)
 - ✅ **CI/CD Pipeline** - Automated testing, linting, and Docker builds with GitHub Actions
 - ✅ **Code Quality Tools** - flake8, black, mypy, isort
 
@@ -20,6 +20,7 @@ A production-ready FastAPI template with JWT Authentication, PostgreSQL, Celery,
 
 - [Quick Start](#-quick-start)
 - [Project Structure](#-project-structure)
+- [Documentation](#-documentation)
 - [Authentication](#-authentication)
 - [API Documentation](#-api-documentation)
 - [Testing the API](#-testing-the-api)
@@ -50,10 +51,11 @@ cd MISO4204-Desarrollo_Nube
 ### 2. Start Services
 
 ```bash
-# Build and start all services
-docker-compose up --build -d
+# Build and start all services (including nginx)
+docker-compose build --no-cache
+docker-compose up -d
 
-# Wait for services to be ready (~15 seconds)
+# Wait for services to be ready (~20 seconds)
 docker-compose ps
 ```
 
@@ -61,23 +63,33 @@ You should see:
 ```
      Name                   Command                  State                        Ports
 ---------------------------------------------------------------------------------------------------------
-fastapi_api      uvicorn app.main:app --hos ...   Up             0.0.0.0:8000->8000/tcp
+fastapi_api      gunicorn app.main:app ...        Up             8000/tcp
 fastapi_db       docker-entrypoint.sh postgres    Up (healthy)   0.0.0.0:5433->5432/tcp
+fastapi_nginx    /docker-entrypoint.sh ngin ...   Up (healthy)   0.0.0.0:8080->80/tcp
 fastapi_redis    docker-entrypoint.sh redis ...   Up (healthy)   0.0.0.0:6380->6379/tcp
 fastapi_worker   celery -A app.worker.celer ...   Up             8000/tcp
 ```
 
+**Important:**
+- The API runs with **Gunicorn + 4 Uvicorn workers** for production-grade performance
+- **Nginx** acts as a reverse proxy on port **8080**
+- Direct API access (port 8000) is not exposed externally
+
 ### 3. Verify Installation
 
 ```bash
-# Check health
-curl http://localhost:8000/health
+# Check health through nginx (recommended)
+curl http://localhost:8080/health
+
+# Expected response:
+# {"status":"healthy","version":"1.0.0"}
 ```
 
 ### 4. Access Documentation
 
-- **Swagger UI**: http://localhost:8000/docs
-- **ReDoc**: http://localhost:8000/redoc
+- **API Base URL**: http://localhost:8080
+- **Swagger UI**: http://localhost:8080/docs
+- **ReDoc**: http://localhost:8080/redoc
 
 ## 📁 Project Structure
 
@@ -119,6 +131,33 @@ curl http://localhost:8000/health
 ├── pyproject.toml                  # Poetry dependencies & config
 └── README.md                       # This file
 ```
+
+---
+
+## 📚 Documentation
+
+Este proyecto incluye documentación completa en el directorio `docs/Entrega_1/`:
+
+### Documentos Disponibles
+
+| Documento | Ubicación | Descripción |
+|-----------|-----------|-------------|
+| **Arquitectura del Sistema** | [docs/Entrega_1/arquitectura.md](docs/Entrega_1/arquitectura.md) | Documentación completa de arquitectura incluyendo:<br>• Diagramas C4 (Contexto y Contenedores)<br>• Diagramas de secuencia<br>• Decisiones de diseño<br>• Contratos de API<br>• Diagramas de despliegue<br>• Base de datos y relaciones<br>• Suite de pruebas (40 tests)<br>• Stack tecnológico |
+| **Decisiones de Diseño** | [docs/Entrega_1/decisiones_diseno.md](docs/Entrega_1/decisiones_diseno.md) | Decisiones arquitectónicas clave y justificaciones |
+| **Diagramas** | [docs/Entrega_1/](docs/Entrega_1/) | Diagramas de arquitectura:<br>• `diagrama_contenedores.mmd` - Diagrama Mermaid<br>• `diagrama_secuencia.puml` - Diagrama PlantUML<br>• Imágenes en `docs/Entrega_1/images/` |
+| **Pruebas de Carga** | [pruebas_carga/](pruebas_carga/) | Scripts y resultados de pruebas de rendimiento |
+
+### Visualización de Diagramas
+
+- **Mermaid** ([diagrama_contenedores.mmd](docs/Entrega_1/diagrama_contenedores.mmd)):
+  - Ver en GitHub directamente
+  - O usar [Mermaid Live Editor](https://mermaid.live/)
+
+- **PlantUML** ([diagrama_secuencia.puml](docs/Entrega_1/diagrama_secuencia.puml)):
+  - Ver en [PlantUML Editor](http://www.plantuml.com/plantuml/uml/)
+  - O usar extensiones de VSCode/IntelliJ
+
+---
 
 ### Key Components
 
@@ -192,8 +231,10 @@ ACCESS_TOKEN_EXPIRE_MINUTES=60  # Token expiration in minutes
 
 ### Base URL
 ```
-http://localhost:8000
+http://localhost:8080
 ```
+
+**Note:** All requests go through Nginx reverse proxy on port 8080
 
 ### Endpoints Overview
 
@@ -214,7 +255,7 @@ http://localhost:8000
 
 **Request:**
 ```bash
-curl http://localhost:8000/health
+curl http://localhost:8080/health
 ```
 
 **Response:**
@@ -235,7 +276,7 @@ curl http://localhost:8000/health
 
 **Request:**
 ```bash
-curl -X POST http://localhost:8000/api/auth/signup \
+curl -X POST http://localhost:8080/api/auth/signup \
   -H "Content-Type: application/json" \
   -d '{
     "first_name": "Juan",
@@ -283,7 +324,7 @@ curl -X POST http://localhost:8000/api/auth/signup \
 
 **Request:**
 ```bash
-curl -X POST http://localhost:8000/api/auth/login \
+curl -X POST http://localhost:8080/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{
     "email": "juan@example.com",
@@ -330,7 +371,7 @@ curl -X POST http://localhost:8000/api/auth/login \
 
 **Request:**
 ```bash
-curl -X POST http://localhost:8000/api/videos/upload \
+curl -X POST http://localhost:8080/api/videos/upload \
   -H "Authorization: Bearer YOUR_JWT_TOKEN_HERE" \
   -H "Content-Type: application/json" \
   -d '{
@@ -373,7 +414,7 @@ Content-Type: application/json
 
 **Request:**
 ```bash
-curl -X GET http://localhost:8000/api/videos/ \
+curl -X GET http://localhost:8080/api/videos/ \
   -H "Authorization: Bearer YOUR_JWT_TOKEN_HERE"
 ```
 
@@ -431,7 +472,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Base URL
-BASE_URL="http://localhost:8000"
+BASE_URL="http://localhost:8080"
 
 echo "${BLUE}=== 1. Health Check ===${NC}"
 curl -s $BASE_URL/health | python3 -m json.tool
@@ -530,7 +571,7 @@ chmod +x test_api.sh
 
 #### Step 1: Create a User
 ```bash
-curl -X POST http://localhost:8000/api/auth/signup \
+curl -X POST http://localhost:8080/api/auth/signup \
   -H "Content-Type: application/json" \
   -d '{
     "first_name": "Juan",
@@ -545,7 +586,7 @@ curl -X POST http://localhost:8000/api/auth/signup \
 
 #### Step 2: Login and Get Token
 ```bash
-curl -X POST http://localhost:8000/api/auth/login \
+curl -X POST http://localhost:8080/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{
     "email": "juan@example.com",
@@ -561,7 +602,7 @@ curl -X POST http://localhost:8000/api/auth/login \
 export TOKEN="your_access_token_here"
 
 # Upload video with authentication
-curl -X POST http://localhost:8000/api/videos/upload \
+curl -X POST http://localhost:8080/api/videos/upload \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -571,7 +612,7 @@ curl -X POST http://localhost:8000/api/videos/upload \
 
 #### Step 4: Test Without Token (Should Fail)
 ```bash
-curl -X POST http://localhost:8000/api/videos/upload \
+curl -X POST http://localhost:8080/api/videos/upload \
   -H "Content-Type: application/json" \
   -d '{
     "test": "This should fail"
@@ -587,7 +628,7 @@ curl -X POST http://localhost:8000/api/videos/upload \
 
 ### Using Swagger UI (Interactive Testing)
 
-1. Go to http://localhost:8000/docs
+1. Go to http://localhost:8080/docs
 2. Click on **POST /api/auth/login**
 3. Click **"Try it out"**
 4. Enter credentials and execute
@@ -687,20 +728,71 @@ docker-compose exec api poetry run black . --check && \
 
 ### Running Tests
 
+The project includes a comprehensive test suite with **40 tests** covering all major functionality:
+
 ```bash
 # Run all tests
-docker-compose exec api poetry run pytest
+docker-compose exec -T api pytest tests/ -v
 
-# Run with coverage
-docker-compose exec api poetry run pytest --cov=app --cov-report=term --cov-report=html
+# Run with coverage report
+docker-compose exec -T api pytest tests/ --cov=app --cov-report=term
+
+# Run with HTML coverage report
+docker-compose exec -T api pytest tests/ --cov=app --cov-report=html
+# Then open htmlcov/index.html in your browser
 
 # Run specific test file
-docker-compose exec api poetry run pytest tests/api/test_auth.py -v
+docker-compose exec -T api pytest tests/api/test_auth.py -v
 
-# Run tests and open coverage report
-docker-compose exec api poetry run pytest --cov=app --cov-report=html
-# Then open htmlcov/index.html in your browser
+# Run tests in quiet mode
+docker-compose exec -T api pytest tests/ -q
 ```
+
+### Test Coverage
+
+Current test coverage: **79%** (40 tests passing)
+
+**Coverage breakdown:**
+- `app/api/routes/auth.py` - **100%** (Authentication endpoints)
+- `app/api/routes/health.py` - **100%** (Health check)
+- `app/api/routes/public.py` - **98%** (Public videos, voting, rankings)
+- `app/api/routes/videos.py` - **82%** (Video management)
+- `app/core/security.py` - **74%** (JWT token management)
+- `app/db/models.py` - **95%** (Database models)
+- `app/schemas/*` - **100%** (All schemas)
+
+**Test suites:**
+- **Authentication Tests** (15 tests)
+  - User signup (success, duplicate email, password mismatch, validation errors)
+  - User login (success, wrong password, nonexistent user)
+  - JWT token functions (custom expiration, missing sub, nonexistent user)
+  - Protected endpoints (without token, invalid token, malformed header)
+
+- **Video Management Tests** (14 tests)
+  - Video upload (success, without auth, missing title, invalid file type, no file)
+  - List user videos (success, without auth, empty list)
+  - Get video detail (success, not owner, not found)
+  - Delete video (success, not owner, not found)
+
+- **Public Endpoints Tests** (9 tests)
+  - List public videos (success, empty list)
+  - Vote for video (success, without auth, duplicate vote, not found)
+  - Rankings (success, city filter, empty rankings)
+
+- **Health Check Tests** (2 tests)
+  - Health check endpoint validation
+
+### Infrastructure for Production
+
+The system is configured with production-grade infrastructure:
+
+**Infrastructure Components:**
+- Gunicorn with **4 Uvicorn workers** for parallel request handling
+- Nginx reverse proxy with **least_conn** load balancing
+- PostgreSQL connection pooling: **10 base + 20 overflow per worker**
+- Database optimized: **300 max_connections**, 256MB shared_buffers
+
+This configuration provides robust performance and scalability for production workloads.
 
 ### Pre-commit Hooks (Optional)
 
@@ -832,4 +924,4 @@ Built with:
 
 ---
 
-**Need help?** Check the [interactive documentation](http://localhost:8000/docs) or review the code.
+**Need help?** Check the [interactive documentation](http://localhost:8080/docs) or review the code.
