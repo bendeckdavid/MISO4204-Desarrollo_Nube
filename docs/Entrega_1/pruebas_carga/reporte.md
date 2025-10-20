@@ -8,7 +8,10 @@ La aplicación funciona de manera estable y confiable cuando maneja hasta **60 s
 
 Se realizaron tres pruebas de carga para evaluar el comportamiento del sistema bajo diferentes niveles de tráfico:
 
-| Métrica                     | Carga Baja (~35 req/s) | Carga Media (~38 req/s) | Carga Alta (~14 req/s*) |
+> [!NOTE]
+> Haz clic en los nombres para acceder directamente a los reportes correspondientes.
+
+| Métrica                     | [Carga Baja](https://bendeckdavid.github.io/MISO4204-Desarrollo_Nube/Entrega_1/pruebas_carga/carga_baja.html) (~35 req/s) | [Carga Media](https://bendeckdavid.github.io/MISO4204-Desarrollo_Nube/Entrega_1/pruebas_carga/carga_media.html) (~38 req/s) | [Carga Alta](https://bendeckdavid.github.io/MISO4204-Desarrollo_Nube/Entrega_1/pruebas_carga/carga_alta.html) (~14 req/s*) |
 |-----------------------------|------------------------|-------------------------|-------------------------|
 | Tiempo de respuesta promedio| 326 ms                 | 394 ms                  | 2 segundos              |
 | Tiempo de respuesta P95     | 762 ms                 | 1 segundo               | 1 segundo               |
