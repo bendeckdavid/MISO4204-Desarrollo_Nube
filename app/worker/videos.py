@@ -118,6 +118,7 @@ def process_video(self, video_id: str):
         # Store the container path that was actually used
         video.processed_file_path = container_processed_path
         video.status = "processed"
+        video.is_published = True
         db.commit()
 
         return {"status": "success", "message": f"Video {video_id} processed successfully"}
