@@ -1,0 +1,580 @@
+{
+  "info": {
+    "name": "ANB Rising Stars Showcase API",
+    "description": "API para la gestión de videos de artistas emergentes con sistema de votación y rankings",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "1.0.0"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{access_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "access_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "user_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "video_id",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Signup - Register new user",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 201\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test(\"Response has user data\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('id');",
+                  "    pm.expect(jsonData).to.have.property('email');",
+                  "    pm.expect(jsonData).to.have.property('first_name');",
+                  "    pm.expect(jsonData).to.have.property('last_name');",
+                  "    pm.expect(jsonData).to.have.property('city');",
+                  "    pm.expect(jsonData).to.have.property('country');",
+                  "    ",
+                  "    // Save user_id for later use",
+                  "    pm.collectionVariables.set('user_id', jsonData.id);",
+                  "});",
+                  "",
+                  "pm.test(\"Response should not include password\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.not.have.property('password');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"artist{{$randomInt}}@example.com\",\n  \"password1\": \"SecurePass123!\",\n  \"password2\": \"SecurePass123!\",\n  \"first_name\": \"Carlos\",\n  \"last_name\": \"Martínez\",\n  \"city\": \"Bogotá\",\n  \"country\": \"Colombia\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/signup",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "signup"]
+            },
+            "description": "Registra un nuevo usuario en el sistema. Requiere email único, contraseña segura, y datos personales básicos."
+          },
+          "response": []
+        },
+        {
+          "name": "Login - Get access token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response has access token\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('access_token');",
+                  "    pm.expect(jsonData).to.have.property('token_type');",
+                  "    pm.expect(jsonData.token_type).to.eql('Bearer');",
+                  "    ",
+                  "    // Save token for authenticated requests",
+                  "    pm.collectionVariables.set('access_token', jsonData.access_token);",
+                  "});",
+                  "",
+                  "pm.test(\"Token is a valid JWT\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    var token = jsonData.access_token;",
+                  "    pm.expect(token.split('.')).to.have.lengthOf(3);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"artist@example.com\",\n  \"password\": \"SecurePass123!\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "login"]
+            },
+            "description": "Autentica un usuario y obtiene un token JWT para acceder a endpoints protegidos. El token expira según la configuración del servidor."
+          },
+          "response": []
+        }
+      ],
+      "description": "Endpoints para registro e inicio de sesión de usuarios"
+    },
+    {
+      "name": "Video Management",
+      "item": [
+        {
+          "name": "Upload Video",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 202 (Accepted)\", function () {",
+                  "    pm.response.to.have.status(202);",
+                  "});",
+                  "",
+                  "pm.test(\"Response has video data\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('id');",
+                  "    pm.expect(jsonData).to.have.property('title');",
+                  "    pm.expect(jsonData).to.have.property('description');",
+                  "    pm.expect(jsonData).to.have.property('status');",
+                  "    pm.expect(jsonData).to.have.property('user_id');",
+                  "    pm.expect(jsonData).to.have.property('created_at');",
+                  "    ",
+                  "    // Save video_id for later use",
+                  "    pm.collectionVariables.set('video_id', jsonData.id);",
+                  "});",
+                  "",
+                  "pm.test(\"Video status is 'processing' or 'pending'\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(['processing', 'pending']).to.include(jsonData.status);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": [],
+                  "description": "Archivo de video (MP4, AVI, MOV, máx 500MB)"
+                },
+                {
+                  "key": "title",
+                  "value": "Mi Video Musical",
+                  "type": "text"
+                },
+                {
+                  "key": "description",
+                  "value": "Una presentación increíble de mi nuevo sencillo",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/videos/upload",
+              "host": ["{{base_url}}"],
+              "path": ["api", "videos", "upload"]
+            },
+            "description": "Sube un video para procesamiento asíncrono. El video será recortado a 30 segundos, redimensionado a 720p, y se le agregará un logo. Requiere autenticación JWT."
+          },
+          "response": []
+        },
+        {
+          "name": "List My Videos",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response is an array\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.be.an('array');",
+                  "});",
+                  "",
+                  "pm.test(\"Videos have required fields\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (jsonData.length > 0) {",
+                  "        var video = jsonData[0];",
+                  "        pm.expect(video).to.have.property('id');",
+                  "        pm.expect(video).to.have.property('title');",
+                  "        pm.expect(video).to.have.property('status');",
+                  "        pm.expect(video).to.have.property('created_at');",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/videos",
+              "host": ["{{base_url}}"],
+              "path": ["api", "videos"]
+            },
+            "description": "Lista todos los videos del usuario autenticado, incluyendo aquellos en proceso, completados o con errores. Requiere autenticación JWT."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Video Details",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response has complete video data\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('id');",
+                  "    pm.expect(jsonData).to.have.property('title');",
+                  "    pm.expect(jsonData).to.have.property('description');",
+                  "    pm.expect(jsonData).to.have.property('status');",
+                  "    pm.expect(jsonData).to.have.property('original_file_path');",
+                  "    pm.expect(jsonData).to.have.property('user_id');",
+                  "    pm.expect(jsonData).to.have.property('created_at');",
+                  "});",
+                  "",
+                  "pm.test(\"Video belongs to authenticated user or is public\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.user_id).to.exist;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/videos/{{video_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "videos", "{{video_id}}"]
+            },
+            "description": "Obtiene los detalles completos de un video específico. Solo puede ver videos propios o públicos. Requiere autenticación JWT."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Video",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 204 (No Content)\", function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});",
+                  "",
+                  "pm.test(\"Response body is empty\", function () {",
+                  "    pm.expect(pm.response.text()).to.be.empty;",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/videos/{{video_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "videos", "{{video_id}}"]
+            },
+            "description": "Elimina un video del sistema. Solo el propietario del video puede eliminarlo. Los archivos asociados también son eliminados del almacenamiento. Requiere autenticación JWT."
+          },
+          "response": []
+        }
+      ],
+      "description": "Endpoints para gestión de videos por parte de usuarios autenticados"
+    },
+    {
+      "name": "Public Endpoints",
+      "item": [
+        {
+          "name": "List Public Videos",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response is an array\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.be.an('array');",
+                  "});",
+                  "",
+                  "pm.test(\"Videos have required public fields (if any exist)\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (jsonData.length > 0) {",
+                  "        var video = jsonData[0];",
+                  "        pm.expect(video).to.have.property('video_id');",
+                  "        pm.expect(video).to.have.property('title');",
+                  "        pm.expect(video).to.have.property('player_name');",
+                  "        pm.expect(video).to.have.property('city');",
+                  "        pm.expect(video).to.have.property('country');",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/public/videos?page=1&page_size=10&order_by=created_at&order=desc",
+              "host": ["{{base_url}}"],
+              "path": ["api", "public", "videos"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Número de página (default: 1)"
+                },
+                {
+                  "key": "page_size",
+                  "value": "10",
+                  "description": "Videos por página (default: 10, máx: 100)"
+                },
+                {
+                  "key": "order_by",
+                  "value": "created_at",
+                  "description": "Campo para ordenar (created_at, title)"
+                },
+                {
+                  "key": "order",
+                  "value": "desc",
+                  "description": "Orden (asc, desc)"
+                },
+                {
+                  "key": "city",
+                  "value": "",
+                  "description": "Filtrar por ciudad del artista",
+                  "disabled": true
+                },
+                {
+                  "key": "country",
+                  "value": "",
+                  "description": "Filtrar por país del artista",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Lista videos públicos procesados con información del artista. Soporta paginación, ordenamiento y filtros por ubicación. No requiere autenticación."
+          },
+          "response": []
+        },
+        {
+          "name": "Vote for Video",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 201 (Created)\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test(\"Response has vote confirmation\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('message');",
+                  "    pm.expect(jsonData).to.have.property('video_id');",
+                  "    pm.expect(jsonData).to.have.property('user_id');",
+                  "    pm.expect(jsonData.message).to.include('vote');",
+                  "});",
+                  "",
+                  "pm.test(\"Vote is for correct video\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.video_id).to.eql(pm.collectionVariables.get('video_id'));",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/public/videos/{{video_id}}/vote",
+              "host": ["{{base_url}}"],
+              "path": ["api", "public", "videos", "{{video_id}}", "vote"]
+            },
+            "description": "Registra un voto para un video público. Un usuario solo puede votar una vez por video. Requiere autenticación JWT."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Rankings",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response has ranking structure\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('rankings');",
+                  "    pm.expect(jsonData).to.have.property('total');",
+                  "    pm.expect(jsonData).to.have.property('page');",
+                  "    pm.expect(jsonData).to.have.property('page_size');",
+                  "    pm.expect(jsonData.rankings).to.be.an('array');",
+                  "});",
+                  "",
+                  "pm.test(\"Rankings have required fields\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (jsonData.rankings.length > 0) {",
+                  "        var ranking = jsonData.rankings[0];",
+                  "        pm.expect(ranking).to.have.property('position');",
+                  "        pm.expect(ranking).to.have.property('video_id');",
+                  "        pm.expect(ranking).to.have.property('title');",
+                  "        pm.expect(ranking).to.have.property('vote_count');",
+                  "        pm.expect(ranking).to.have.property('artist_name');",
+                  "        pm.expect(ranking).to.have.property('city');",
+                  "        pm.expect(ranking).to.have.property('country');",
+                  "    }",
+                  "});",
+                  "",
+                  "pm.test(\"Rankings are sorted by vote count (descending)\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (jsonData.rankings.length > 1) {",
+                  "        for (var i = 0; i < jsonData.rankings.length - 1; i++) {",
+                  "            pm.expect(jsonData.rankings[i].vote_count).to.be.at.least(jsonData.rankings[i + 1].vote_count);",
+                  "        }",
+                  "    }",
+                  "});",
+                  "",
+                  "pm.test(\"Positions are sequential (if rankings exist)\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (jsonData.rankings.length > 0) {",
+                  "        jsonData.rankings.forEach(function(ranking, index) {",
+                  "            pm.expect(ranking.position).to.eql(index + 1);",
+                  "        });",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/public/rankings?page=1&page_size=20",
+              "host": ["{{base_url}}"],
+              "path": ["api", "public", "rankings"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Número de página (default: 1)"
+                },
+                {
+                  "key": "page_size",
+                  "value": "20",
+                  "description": "Resultados por página (default: 20, máx: 100)"
+                },
+                {
+                  "key": "city",
+                  "value": "",
+                  "description": "Filtrar por ciudad del artista",
+                  "disabled": true
+                },
+                {
+                  "key": "country",
+                  "value": "",
+                  "description": "Filtrar por país del artista",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Obtiene el ranking de videos ordenados por cantidad de votos. Soporta paginación y filtros por ubicación del artista. No requiere autenticación."
+          },
+          "response": []
+        }
+      ],
+      "description": "Endpoints públicos accesibles sin autenticación (excepto votación que requiere JWT)"
+    },
+    {
+      "name": "Health Check",
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/health",
+          "host": ["{{base_url}}"],
+          "path": ["health"]
+        },
+        "description": "Verifica el estado de salud del servicio"
+      },
+      "response": []
+    }
+  ]
+}
