@@ -1,264 +1,223 @@
-# FastAPI Template - ANB Rising Stars Showcase API
+# ANB Rising Stars Showcase API
 
-A production-ready FastAPI template with JWT Authentication, PostgreSQL, Celery, Redis, and Docker. Built for the ANB Rising Stars Showcase project.
+API para la gestión de videos de artistas emergentes con sistema de votación y rankings. Proyecto desarrollado con FastAPI, PostgreSQL, Celery, Redis y Docker para el curso MISO4204 - Desarrollo en la Nube.
 
-## 🚀 Features
+## 🚀 Características
 
-- ✅ **FastAPI** - Modern, fast web framework for building APIs
-- ✅ **JWT Authentication** - Secure token-based authentication with bcrypt password hashing
-- ✅ **PostgreSQL** - Reliable relational database with UUID primary keys
-- ✅ **SQLAlchemy 2.0** - ORM with hybrid properties for password management
-- ✅ **Celery + Redis** - Distributed task queue for background processing
-- ✅ **Docker Compose** - Multi-container orchestration
-- ✅ **Pydantic v2** - Data validation with environment-based configuration
-- ✅ **Poetry** - Modern dependency management
-- ✅ **pytest** - Comprehensive test suite with 79% coverage (40 tests)
-- ✅ **CI/CD Pipeline** - Automated testing, linting, and Docker builds with GitHub Actions
-- ✅ **Code Quality Tools** - flake8, black, mypy, isort
+- ✅ **FastAPI** - Framework moderno y rápido para construir APIs
+- ✅ **Autenticación JWT** - Seguridad con tokens y bcrypt para contraseñas
+- ✅ **PostgreSQL** - Base de datos relacional con UUIDs como primary keys
+- ✅ **Procesamiento Asíncrono** - Celery + Redis para procesar videos en background
+- ✅ **FFmpeg** - Procesamiento de video (recorte a 30s, resize a 720p, logo)
+- ✅ **Docker Compose** - Orquestación de 5 contenedores
+- ✅ **Nginx** - Reverse proxy con load balancing
+- ✅ **Gunicorn** - 4 workers Uvicorn para alta concurrencia
+- ✅ **pytest** - Suite de tests completa con 79% de cobertura (40 tests)
+- ✅ **CI/CD** - Pipeline automatizado con GitHub Actions
+- ✅ **Postman Collection** - Colección completa con tests automatizados
 
-## 📋 Table of Contents
+## 📋 Tabla de Contenidos
 
-- [Quick Start](#-quick-start)
-- [Project Structure](#-project-structure)
-- [Documentation](#-documentation)
-- [Authentication](#-authentication)
-- [API Documentation](#-api-documentation)
-- [Testing the API](#-testing-the-api)
-- [Development](#-development)
-- [Code Quality](#-code-quality)
-- [CI/CD Pipeline](#-cicd-pipeline)
-- [Docker Commands](#-docker-commands)
+- [Inicio Rápido](#-inicio-rápido)
+- [Estructura del Proyecto](#-estructura-del-proyecto)
+- [Documentación](#-documentación)
+- [API Endpoints](#-api-endpoints)
+- [Ejemplos de Uso](#-ejemplos-de-uso)
+- [Tests](#-tests)
+- [Desarrollo](#-desarrollo)
+- [Despliegue](#-despliegue)
 
-## 🏃 Quick Start
+## 🏃 Inicio Rápido
 
-### Prerequisites
+### Prerrequisitos
 
 - Docker >= 20.10
 - Docker Compose >= 2.0
-- Python 3.13+ (for local development)
+- Python 3.13+ (solo para desarrollo local)
 
-### 1. Clone and Setup
+### 1. Clonar y Configurar
 
 ```bash
-# Clone the repository
-git clone <repository-url>
+git clone https://github.com/tu-usuario/MISO4204-Desarrollo_Nube.git
 cd MISO4204-Desarrollo_Nube
 
-# The .env file is already configured for development
-# You can modify it if needed
+# El archivo .env ya está configurado para desarrollo local
+# Puedes modificarlo si lo necesitas
 ```
 
-### 2. Start Services
+### 2. Iniciar Servicios
 
 ```bash
-# Build and start all services (including nginx)
+# Construir e iniciar todos los servicios
 docker-compose build --no-cache
 docker-compose up -d
 
-# Wait for services to be ready (~20 seconds)
+# Esperar ~30 segundos para que todos los servicios estén listos
+sleep 30
+
+# Verificar el estado de los servicios
 docker-compose ps
 ```
 
-You should see:
+Deberías ver:
 ```
      Name                   Command                  State                        Ports
----------------------------------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------------------------------
 fastapi_api      gunicorn app.main:app ...        Up             8000/tcp
 fastapi_db       docker-entrypoint.sh postgres    Up (healthy)   0.0.0.0:5433->5432/tcp
-fastapi_nginx    /docker-entrypoint.sh ngin ...   Up (healthy)   0.0.0.0:8080->80/tcp
+fastapi_nginx    /docker-entrypoint.sh nginx ...  Up (healthy)   0.0.0.0:8080->80/tcp
 fastapi_redis    docker-entrypoint.sh redis ...   Up (healthy)   0.0.0.0:6380->6379/tcp
-fastapi_worker   celery -A app.worker.celer ...   Up             8000/tcp
+fastapi_worker   celery -A app.worker.celery ...  Up             8000/tcp
 ```
 
-**Important:**
-- The API runs with **Gunicorn + 4 Uvicorn workers** for production-grade performance
-- **Nginx** acts as a reverse proxy on port **8080**
-- Direct API access (port 8000) is not exposed externally
-
-### 3. Verify Installation
+### 3. Verificar Instalación
 
 ```bash
-# Check health through nginx (recommended)
+# Health check
 curl http://localhost:8080/health
 
-# Expected response:
+# Respuesta esperada:
 # {"status":"healthy","version":"1.0.0"}
 ```
 
-### 4. Access Documentation
+### 4. Acceder a la Documentación
 
 - **API Base URL**: http://localhost:8080
-- **Swagger UI**: http://localhost:8080/docs
+- **Swagger UI (Interactiva)**: http://localhost:8080/docs
 - **ReDoc**: http://localhost:8080/redoc
 
-## 📁 Project Structure
+## 📁 Estructura del Proyecto
 
 ```
-.
-├── app/
+MISO4204-Desarrollo_Nube/
+├── app/                                 # Código fuente de la aplicación
 │   ├── api/
 │   │   └── routes/
 │   │       ├── __init__.py
-│   │       ├── health.py          # Health check endpoint
-│   │       ├── auth.py             # Authentication (signup, login)
-│   │       └── videos.py           # Video upload endpoint
+│   │       ├── auth.py                  # Endpoints de autenticación
+│   │       ├── health.py                # Health check
+│   │       ├── videos.py                # Gestión de videos (CRUD)
+│   │       └── public.py                # Endpoints públicos (votos, rankings)
 │   ├── core/
 │   │   ├── __init__.py
-│   │   ├── config.py               # Settings (Pydantic, env variables)
-│   │   └── security.py             # JWT token management
+│   │   ├── config.py                    # Configuración con Pydantic Settings
+│   │   └── security.py                  # JWT token management
 │   ├── db/
 │   │   ├── __init__.py
-│   │   ├── base.py                 # Base model (UUID, timestamps)
-│   │   ├── database.py             # SQLAlchemy setup
-│   │   └── models.py               # Database models (User, Task)
+│   │   ├── base.py                      # Base model con UUID y timestamps
+│   │   ├── database.py                  # SQLAlchemy engine y session
+│   │   └── models.py                    # Modelos (User, Video, Vote)
 │   ├── schemas/
 │   │   ├── __init__.py
-│   │   ├── auth.py                 # Auth schemas (Signup, Login, Token)
-│   │   └── video.py                # Video schemas (Upload, Response)
+│   │   ├── auth.py                      # Schemas de autenticación
+│   │   ├── video.py                     # Schemas de videos
+│   │   └── vote.py                      # Schemas de votos y rankings
 │   ├── worker/
 │   │   ├── __init__.py
-│   │   ├── celery_app.py           # Celery configuration
-│   │   └── tasks.py                # Async tasks
-│   └── main.py                     # FastAPI application entry point
-├── tests/
-│   └── conftest.py                 # Test fixtures
+│   │   ├── celery_app.py                # Configuración de Celery
+│   │   └── tasks.py                     # Tareas asíncronas (procesamiento de video)
+│   └── main.py                          # Punto de entrada de FastAPI
+│
+├── tests/                               # Suite de tests
+│   ├── api/
+│   │   ├── test_auth.py                 # Tests de autenticación (15 tests)
+│   │   ├── test_videos.py               # Tests de videos (14 tests)
+│   │   ├── test_public.py               # Tests de endpoints públicos (9 tests)
+│   │   └── test_health.py               # Tests de health check (2 tests)
+│   └── conftest.py                      # Fixtures de pytest
+│
+├── docs/                                # Documentación del proyecto
+│   └── Entrega_1/
+│       ├── arquitectura.md              # Arquitectura completa del sistema
+│       ├── decisiones_diseno.md         # Decisiones arquitectónicas
+│       ├── modelo_datos.md              # Modelo de datos y relaciones
+│       ├── images/                      # Diagramas exportados
+│       │   ├── modelo_contexto.jpeg     # Diagrama C4 - Contexto
+│       │   ├── modelo_contenedores.png  # Diagrama C4 - Contenedores
+│       │   ├── modelo_secuencia.png     # Diagrama de secuencia
+│       │   └── modelo_relacional.jpeg   # Modelo relacional de BD
+│       └── pruebas_carga/
+│           └── reporte.md               # Resultados de pruebas de carga
+│
+├── collections/                         # Colección de Postman
+│   ├── postman_collection.json          # Colección con 9 endpoints + tests
+│   ├── postman_environment.json         # Variables de entorno
+│   └── README.md                        # Guía de uso con Newman CLI
+│
 ├── scripts/
-│   └── load_data.py                # Sample data loader
-├── .env                            # Environment variables
-├── .pre-commit-config.yaml         # Pre-commit hooks config
-├── docker-compose.yml              # Docker services orchestration
-├── Dockerfile                      # API & Worker image
-├── pyproject.toml                  # Poetry dependencies & config
-└── README.md                       # This file
+│   └── load_data.py                     # Script para cargar datos de ejemplo
+│
+├── media/                               # Archivos de video (montado como volumen)
+│   ├── uploads/                         # Videos originales subidos
+│   └── processed/                       # Videos procesados
+│
+├── .env                                 # Variables de entorno
+├── .github/
+│   └── workflows/
+│       └── ci.yml                       # Pipeline de CI/CD
+├── docker-compose.yml                   # Orquestación de servicios
+├── Dockerfile                           # Imagen para API y Worker
+├── nginx.conf                           # Configuración de Nginx
+├── pyproject.toml                       # Dependencias con Poetry
+├── .pre-commit-config.yaml              # Hooks de pre-commit
+└── README.md                            # Este archivo
 ```
 
----
-
-## 📚 Documentation
-
-Este proyecto incluye documentación completa en el directorio `docs/Entrega_1/`:
+## 📚 Documentación
 
 ### Documentos Disponibles
 
 | Documento | Ubicación | Descripción |
 |-----------|-----------|-------------|
-| **Arquitectura del Sistema** | [docs/Entrega_1/arquitectura.md](docs/Entrega_1/arquitectura.md) | Documentación completa de arquitectura incluyendo:<br>• Diagramas C4 (Contexto y Contenedores)<br>• Diagramas de secuencia<br>• Decisiones de diseño<br>• Contratos de API<br>• Diagramas de despliegue<br>• Base de datos y relaciones<br>• Suite de pruebas (40 tests)<br>• Stack tecnológico |
-| **Decisiones de Diseño** | [docs/Entrega_1/decisiones_diseno.md](docs/Entrega_1/decisiones_diseno.md) | Decisiones arquitectónicas clave y justificaciones |
-| **Diagramas** | [docs/Entrega_1/](docs/Entrega_1/) | Diagramas de arquitectura:<br>• `diagrama_contenedores.mmd` - Diagrama Mermaid<br>• `diagrama_secuencia.puml` - Diagrama PlantUML<br>• Imágenes en `docs/Entrega_1/images/` |
-| **Pruebas de Carga** | [pruebas_carga/](pruebas_carga/) | Scripts y resultados de pruebas de rendimiento |
+| **Arquitectura del Sistema** | [docs/Entrega_1/arquitectura.md](docs/Entrega_1/arquitectura.md) | Documentación completa incluyendo:<br>• Diagramas C4 (Contexto y Contenedores)<br>• Diagramas de secuencia<br>• Decisiones de diseño<br>• Contratos de API<br>• Stack tecnológico |
+| **Decisiones de Diseño** | [docs/Entrega_1/decisiones_diseno.md](docs/Entrega_1/decisiones_diseno.md) | Decisiones arquitectónicas y justificaciones |
+| **Modelo de Datos** | [docs/Entrega_1/modelo_datos.md](docs/Entrega_1/modelo_datos.md) | Modelo relacional y relaciones entre entidades |
+| **Pruebas de Carga** | [docs/Entrega_1/pruebas_carga/reporte.md](docs/Entrega_1/pruebas_carga/reporte.md) | Resultados y análisis de pruebas de rendimiento |
+| **Colección de Postman** | [collections/README.md](collections/README.md) | Guía completa para usar la colección con Postman y Newman |
 
-### Visualización de Diagramas
+### Diagramas
 
-- **Mermaid** ([diagrama_contenedores.mmd](docs/Entrega_1/diagrama_contenedores.mmd)):
-  - Ver en GitHub directamente
-  - O usar [Mermaid Live Editor](https://mermaid.live/)
+Todos los diagramas están disponibles como imágenes en [`docs/Entrega_1/images/`](docs/Entrega_1/images/):
 
-- **PlantUML** ([diagrama_secuencia.puml](docs/Entrega_1/diagrama_secuencia.puml)):
-  - Ver en [PlantUML Editor](http://www.plantuml.com/plantuml/uml/)
-  - O usar extensiones de VSCode/IntelliJ
+- **[Diagrama de Contexto (C4)](docs/Entrega_1/images/modelo_contexto.jpeg)** - Vista de alto nivel del sistema
+- **[Diagrama de Contenedores (C4)](docs/Entrega_1/images/modelo_contenedores.png)** - Arquitectura de contenedores
+- **[Diagrama de Secuencia](docs/Entrega_1/images/modelo_secuencia.png)** - Flujo de procesamiento de videos
+- **[Modelo Relacional](docs/Entrega_1/images/modelo_relacional.jpeg)** - Estructura de base de datos
 
----
+## 🔌 API Endpoints
 
-### Key Components
+### Resumen de Endpoints
 
-#### User Model with Password Hashing (`app/db/models.py`)
-
-The User model includes automatic password hashing using bcrypt:
-
-```python
-class User(Base):
-    __tablename__ = "users"
-
-    first_name = Column(String(100), nullable=False)
-    last_name = Column(String(100), nullable=False)
-    email = Column(String(255), unique=True, nullable=False, index=True)
-    _password = Column("password", String(255), nullable=False)
-    city = Column(String(100), nullable=False)
-    country = Column(String(100), nullable=False)
-
-    @hybrid_property
-    def password(self):
-        return self._password
-
-    @password.setter
-    def password(self, plaintext_password: str):
-        """Hash password using bcrypt when setting it."""
-        self._password = bcrypt.hashpw(
-            plaintext_password.encode("utf-8"),
-            bcrypt.gensalt()
-        ).decode("utf-8")
-
-    def verify_password(self, plaintext_password: str) -> bool:
-        """Verify a plaintext password against the stored hash."""
-        return bcrypt.checkpw(
-            plaintext_password.encode("utf-8"),
-            self._password.encode("utf-8")
-        )
-```
-
-**Key features:**
-- ✅ Passwords are automatically hashed when assigned
-- ✅ Direct password verification method on the model
-- ✅ Stored in `password` column (not `password_hash`)
-- ✅ Uses bcrypt for secure hashing
-
-## 🔐 Authentication
-
-### JWT Token-Based Authentication
-
-The API uses JWT (JSON Web Tokens) for authentication:
-
-1. **Signup** - Create a new user account
-2. **Login** - Get a JWT token
-3. **Protected Endpoints** - Use the token in the `Authorization` header
-
-### Environment Configuration
-
-JWT settings are configurable via environment variables in `.env`:
-
-```bash
-# JWT Configuration
-SECRET_KEY=your-secret-key-change-this-in-production-use-openssl-rand-hex-32
-ACCESS_TOKEN_EXPIRE_MINUTES=60  # Token expiration in minutes
-```
-
-**Configuration options:**
-- `SECRET_KEY` - Secret key for JWT signing (change in production!)
-- `ACCESS_TOKEN_EXPIRE_MINUTES` - Token expiration time (default: 60 minutes)
-
-
-## 📚 API Documentation
+| Endpoint | Método | Auth | Descripción |
+|----------|--------|------|-------------|
+| `/health` | GET | No | Health check del servicio |
+| `/api/auth/signup` | POST | No | Registro de nuevo usuario |
+| `/api/auth/login` | POST | No | Login y obtención de JWT |
+| `/api/videos/upload` | POST | JWT | Subir video para procesamiento |
+| `/api/videos/` | GET | JWT | Listar mis videos |
+| `/api/videos/{video_id}` | GET | JWT | Obtener detalles de un video |
+| `/api/videos/{video_id}` | DELETE | JWT | Eliminar un video |
+| `/api/public/videos` | GET | No | Listar videos públicos |
+| `/api/public/videos/{video_id}/vote` | POST | JWT | Votar por un video |
+| `/api/public/rankings` | GET | No | Ver ranking de videos |
 
 ### Base URL
+
 ```
 http://localhost:8080
 ```
 
-**Note:** All requests go through Nginx reverse proxy on port 8080
+**Nota:** Todas las peticiones pasan por el proxy reverso de Nginx en el puerto 8080.
 
-### Endpoints Overview
+## 💡 Ejemplos de Uso
 
-| Endpoint | Method | Auth Required | Description |
-|----------|--------|---------------|-------------|
-| `/health` | GET | No | Health check |
-| `/api/auth/signup` | POST | No | Register new user |
-| `/api/auth/login` | POST | No | Login and get JWT token |
-| `/api/videos/upload` | POST | Yes (JWT) | Upload video |
+### 1. Health Check
 
----
-
-### 1️⃣ Health Check
-
-**Endpoint:** `GET /health`
-
-**Description:** Check if the API is running
-
-**Request:**
 ```bash
 curl http://localhost:8080/health
 ```
 
-**Response:**
+**Respuesta:**
 ```json
 {
   "status": "healthy",
@@ -268,660 +227,520 @@ curl http://localhost:8080/health
 
 ---
 
-### 2️⃣ User Signup
+### 2. Registro de Usuario
 
-**Endpoint:** `POST /api/auth/signup`
-
-**Description:** Register a new user account
-
-**Request:**
 ```bash
 curl -X POST http://localhost:8080/api/auth/signup \
   -H "Content-Type: application/json" \
   -d '{
-    "first_name": "Juan",
-    "last_name": "Pérez",
-    "email": "juan@example.com",
-    "password1": "securepassword123",
-    "password2": "securepassword123",
-    "city": "Bogotá",
+    "email": "artist@example.com",
+    "password1": "SecurePass123!",
+    "password2": "SecurePass123!",
+    "first_name": "Carlos",
+    "last_name": "Martinez",
+    "city": "Bogota",
     "country": "Colombia"
   }'
 ```
 
-**Request Body:**
+**Respuesta (201 Created):**
 ```json
 {
-  "first_name": "string",      // Required, max 100 chars
-  "last_name": "string",       // Required, max 100 chars
-  "email": "string",           // Required, valid email, unique
-  "password1": "string",       // Required, min 8 chars
-  "password2": "string",       // Required, must match password1
-  "city": "string",            // Required, max 100 chars
-  "country": "string"          // Required, max 100 chars
+  "id": "ec3fe238-8640-4649-8837-e1b2cfc19be8",
+  "first_name": "Carlos",
+  "last_name": "Martinez",
+  "email": "artist@example.com",
+  "city": "Bogota",
+  "country": "Colombia"
 }
 ```
 
-**Response (201 Created):**
-```json
-{
-  "message": "User created successfully",
-  "user_id": "c8b44023-1172-4a56-b440-045120713d14"
-}
-```
-
-**Error Responses:**
-- **400 Bad Request** - Email already registered or passwords don't match
-- **422 Unprocessable Entity** - Validation error (invalid email, short password, etc.)
+**Errores posibles:**
+- `400` - Email ya registrado o contraseñas no coinciden
+- `422` - Error de validación (email inválido, contraseña corta, etc.)
 
 ---
 
-### 3️⃣ User Login
+### 3. Login
 
-**Endpoint:** `POST /api/auth/login`
-
-**Description:** Authenticate and receive a JWT token
-
-**Request:**
 ```bash
 curl -X POST http://localhost:8080/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{
-    "email": "juan@example.com",
-    "password": "securepassword123"
+    "email": "artist@example.com",
+    "password": "SecurePass123!"
   }'
 ```
 
-**Request Body:**
+**Respuesta (200 OK):**
 ```json
 {
-  "email": "string",      // Required
-  "password": "string"    // Required
-}
-```
-
-**Response (200 OK):**
-```json
-{
-  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJjOGI0NDAyMy0xMTcyLTRhNTYtYjQ0MC0wNDUxMjA3MTNkMTQiLCJleHAiOjE3NjA3NzkyODN9.p6RBMfqwqQvfhzd8NkGXM36UiZ7Gch2A0_HGhFvaLXM",
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
   "token_type": "Bearer",
-  "expires_in": 3600  // Seconds (60 minutes * 60)
+  "expires_in": 3600
 }
 ```
 
-**Token Details:**
-- **Type:** JWT (JSON Web Token)
-- **Expiration:** Configurable via `ACCESS_TOKEN_EXPIRE_MINUTES` (default: 1 hour)
-- **Contains:** User ID in the `sub` claim
-
-**Error Responses:**
-- **401 Unauthorized** - Invalid email or password
-
-**Save the token for protected endpoints!**
+**Guarda el `access_token` para usarlo en endpoints protegidos!**
 
 ---
 
-### 4️⃣ Upload Video
+### 4. Subir Video (requiere JWT)
 
-**Endpoint:** `POST /api/videos/upload`
-
-**Description:** Upload a video (protected endpoint)
-
-**Authentication:** Required (JWT token)
-
-**Request:**
 ```bash
+# Primero exporta el token
+export TOKEN="tu_access_token_aqui"
+
+# Subir video con archivo
 curl -X POST http://localhost:8080/api/videos/upload \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN_HERE" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "test": "Mi video de habilidades"
-  }'
+  -H "Authorization: Bearer $TOKEN" \
+  -F "file=@/ruta/a/tu/video.mp4" \
+  -F "title=Mi Video Musical" \
+  -F "description=Una presentación increíble"
 ```
 
-**Request Headers:**
-```
-Authorization: Bearer <jwt_token>
-Content-Type: application/json
-```
-
-**Request Body:**
+**Respuesta (202 Accepted):**
 ```json
 {
-  "test": "string"  // Required
+  "id": "a1b2c3d4-5678-90ab-cdef-1234567890ab",
+  "title": "Mi Video Musical",
+  "description": "Una presentación increíble",
+  "status": "processing",
+  "user_id": "ec3fe238-8640-4649-8837-e1b2cfc19be8",
+  "created_at": "2025-10-19T20:30:00"
 }
 ```
 
-**Response (201 Created):**
-```json
-{
-  "id": "example-video-id",
-  "user_id": "c8b44023-1172-4a56-b440-045120713d14"
-}
-```
+**Notas:**
+- El video se procesará de forma asíncrona con Celery
+- Formatos aceptados: MP4, AVI, MOV
+- Tamaño máximo: 500MB
+- El video será recortado a 30 segundos, redimensionado a 720p y se le agregará un logo
 
-**Error Responses:**
-- **401 Unauthorized** - Missing or invalid JWT token
-- **422 Unprocessable Entity** - Validation error
+---
 
-### 5️⃣ List User Videos
+### 5. Listar Mis Videos (requiere JWT)
 
-**Endpoint:** `GET /api/videos/`
-
-**Description:**  Retrieve all videos uploaded by the authenticated user (protected endpoint)
-
-**Authentication:** Required (JWT token)
-
-**Request:**
 ```bash
 curl -X GET http://localhost:8080/api/videos/ \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN_HERE"
+  -H "Authorization: Bearer $TOKEN"
 ```
 
-**Request Headers:**
-```
-Authorization: Bearer <jwt_token>
-```
-
-
-**Response (200 OK):**
+**Respuesta (200 OK):**
 ```json
 [
   {
-    "video_id": "example-video-id-1",
-    "title": "Mi primer video",
+    "id": "a1b2c3d4-5678-90ab-cdef-1234567890ab",
+    "title": "Mi Video Musical",
+    "description": "Una presentación increíble",
     "status": "completed",
-    "uploaded_at": "2025-10-18T16:30:00",
-    "processed_at": "2025-10-18T16:45:00",
-    "processed_url": "https://anb.com/videos/processed/example-video-id-1.mp4"
-  },
-  {
-    "video_id": "example-video-id-2",
-    "title": "Mi segundo video",
-    "status": "pending",
-    "uploaded_at": "2025-10-18T17:00:00"
+    "original_file_path": "/media/uploads/video.mp4",
+    "processed_file_path": "/media/processed/video_processed.mp4",
+    "is_published": false,
+    "created_at": "2025-10-19T20:30:00",
+    "updated_at": "2025-10-19T20:32:00"
   }
 ]
 ```
 
-**Error Responses:**
-- **401 Unauthorized** - Missing or invalid JWT token
-
-
+**Estados posibles:**
+- `pending` - En cola de procesamiento
+- `processing` - Procesándose actualmente
+- `completed` - Procesado exitosamente
+- `failed` - Error en el procesamiento
 
 ---
 
-## 🧪 Testing the API
-
-### Complete Test Script
-
-Save this as `test_api.sh`:
+### 6. Obtener Detalles de un Video (requiere JWT)
 
 ```bash
-#!/bin/bash
-
-echo "=========================================="
-echo "  ANB Rising Stars API - Complete Test"
-echo "=========================================="
-echo ""
-
-# Colors for output
-GREEN='\033[0;32m'
-RED='\033[0;31m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
-
-# Base URL
-BASE_URL="http://localhost:8080"
-
-echo "${BLUE}=== 1. Health Check ===${NC}"
-curl -s $BASE_URL/health | python3 -m json.tool
-echo -e "\n"
-
-echo "${BLUE}=== 2. User Signup ===${NC}"
-SIGNUP_RESPONSE=$(curl -s -X POST $BASE_URL/api/auth/signup \
-  -H "Content-Type: application/json" \
-  -d '{
-    "first_name": "Test",
-    "last_name": "User",
-    "email": "testuser@example.com",
-    "password1": "testpass123",
-    "password2": "testpass123",
-    "city": "Medellín",
-    "country": "Colombia"
-  }')
-
-echo $SIGNUP_RESPONSE | python3 -m json.tool
-
-# Check if signup was successful
-if echo $SIGNUP_RESPONSE | grep -q "user_id"; then
-    echo -e "${GREEN}✓ Signup successful${NC}"
-else
-    echo -e "${RED}✗ Signup failed (user might already exist)${NC}"
-fi
-echo ""
-
-echo "${BLUE}=== 3. User Login ===${NC}"
-LOGIN_RESPONSE=$(curl -s -X POST $BASE_URL/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "testuser@example.com",
-    "password": "testpass123"
-  }')
-
-echo $LOGIN_RESPONSE | python3 -m json.tool
-
-# Extract token
-TOKEN=$(echo $LOGIN_RESPONSE | python3 -c "import sys, json; print(json.load(sys.stdin)['access_token'])" 2>/dev/null)
-
-if [ -z "$TOKEN" ]; then
-    echo -e "${RED}✗ Login failed - could not get token${NC}"
-    exit 1
-else
-    echo -e "${GREEN}✓ Login successful${NC}"
-    echo -e "${BLUE}Token (first 50 chars): ${TOKEN:0:50}...${NC}"
-fi
-echo ""
-
-echo "${BLUE}=== 4. Upload Video (WITH token) ===${NC}"
-UPLOAD_RESPONSE=$(curl -s -X POST $BASE_URL/api/videos/upload \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "test": "Mi video de habilidades increíbles"
-  }')
-
-echo $UPLOAD_RESPONSE | python3 -m json.tool
-
-if echo $UPLOAD_RESPONSE | grep -q "id"; then
-    echo -e "${GREEN}✓ Video upload successful${NC}"
-else
-    echo -e "${RED}✗ Video upload failed${NC}"
-fi
-echo ""
-
-echo "${BLUE}=== 5. Upload Video (WITHOUT token - should fail) ===${NC}"
-FAIL_RESPONSE=$(curl -s -X POST $BASE_URL/api/videos/upload \
-  -H "Content-Type: application/json" \
-  -d '{
-    "test": "This should fail"
-  }')
-
-echo $FAIL_RESPONSE | python3 -m json.tool
-
-if echo $FAIL_RESPONSE | grep -q "Not authenticated"; then
-    echo -e "${GREEN}✓ Authentication working correctly (request blocked)${NC}"
-else
-    echo -e "${RED}✗ Authentication not working${NC}"
-fi
-echo ""
-
-echo "${GREEN}=========================================="
-echo "  All tests completed!"
-echo "==========================================${NC}"
+curl -X GET http://localhost:8080/api/videos/{video_id} \
+  -H "Authorization: Bearer $TOKEN"
 ```
 
-Make it executable and run:
-```bash
-chmod +x test_api.sh
-./test_api.sh
-```
-
-### Manual Testing Steps
-
-#### Step 1: Create a User
-```bash
-curl -X POST http://localhost:8080/api/auth/signup \
-  -H "Content-Type: application/json" \
-  -d '{
-    "first_name": "Juan",
-    "last_name": "Pérez",
-    "email": "juan@example.com",
-    "password1": "mypassword123",
-    "password2": "mypassword123",
-    "city": "Bogotá",
-    "country": "Colombia"
-  }'
-```
-
-#### Step 2: Login and Get Token
-```bash
-curl -X POST http://localhost:8080/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "juan@example.com",
-    "password": "mypassword123"
-  }'
-```
-
-**Save the `access_token` from the response!**
-
-#### Step 3: Use Token for Protected Endpoint
-```bash
-# Export token as environment variable
-export TOKEN="your_access_token_here"
-
-# Upload video with authentication
-curl -X POST http://localhost:8080/api/videos/upload \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "test": "My amazing basketball skills"
-  }'
-```
-
-#### Step 4: Test Without Token (Should Fail)
-```bash
-curl -X POST http://localhost:8080/api/videos/upload \
-  -H "Content-Type: application/json" \
-  -d '{
-    "test": "This should fail"
-  }'
-```
-
-**Expected response:**
+**Respuesta (200 OK):**
 ```json
 {
-  "detail": "Not authenticated"
+  "id": "a1b2c3d4-5678-90ab-cdef-1234567890ab",
+  "title": "Mi Video Musical",
+  "description": "Una presentación increíble",
+  "status": "completed",
+  "original_file_path": "/media/uploads/video.mp4",
+  "processed_file_path": "/media/processed/video_processed.mp4",
+  "is_published": false,
+  "user_id": "ec3fe238-8640-4649-8837-e1b2cfc19be8",
+  "created_at": "2025-10-19T20:30:00",
+  "updated_at": "2025-10-19T20:32:00"
 }
 ```
 
-### Using Swagger UI (Interactive Testing)
+---
 
-1. Go to http://localhost:8080/docs
-2. Click on **POST /api/auth/login**
-3. Click **"Try it out"**
-4. Enter credentials and execute
-5. Copy the `access_token` from the response
-6. Click the **"Authorize"** button at the top
-7. Paste the token in the format: `Bearer <your_token>`
-8. Click **"Authorize"**
-9. Now you can test protected endpoints!
+### 7. Eliminar Video (requiere JWT)
 
-### Verify Database
-
-Check users created in the database:
 ```bash
-docker-compose exec db psql -U fastapi_user -d fastapi_db -c "SELECT id, email, first_name, last_name, city, country, created_at FROM users;"
+curl -X DELETE http://localhost:8080/api/videos/{video_id} \
+  -H "Authorization: Bearer $TOKEN"
 ```
 
-## 💻 Development
+**Respuesta (204 No Content):**
+*(Sin contenido en el body)*
 
-### Environment Variables
+**Errores posibles:**
+- `404` - Video no encontrado
+- `403` - No tienes permiso para eliminar este video
 
-The `.env` file contains all configuration:
+---
+
+### 8. Listar Videos Públicos (sin auth)
 
 ```bash
-# Database
+curl "http://localhost:8080/api/public/videos?page=1&page_size=10&order_by=created_at&order=desc"
+```
+
+**Parámetros de query:**
+- `page` (opcional): Número de página (default: 1)
+- `page_size` (opcional): Videos por página (default: 10, máx: 100)
+- `order_by` (opcional): Campo para ordenar (created_at, title)
+- `order` (opcional): Orden (asc, desc)
+- `city` (opcional): Filtrar por ciudad del artista
+- `country` (opcional): Filtrar por país del artista
+
+**Respuesta (200 OK):**
+```json
+[
+  {
+    "video_id": "a1b2c3d4-5678-90ab-cdef-1234567890ab",
+    "title": "Mi Video Musical",
+    "player_name": "Carlos Martinez",
+    "city": "Bogota",
+    "country": "Colombia",
+    "processed_url": "https://anb.com/videos/processed/a1b2c3d4-5678-90ab-cdef-1234567890ab.mp4",
+    "votes": 15,
+    "uploaded_at": "2025-10-19T20:30:00"
+  }
+]
+```
+
+---
+
+### 9. Votar por un Video (requiere JWT)
+
+```bash
+curl -X POST http://localhost:8080/api/public/videos/{video_id}/vote \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**Respuesta (200 OK):**
+```json
+{
+  "message": "Vote registered successfully",
+  "video_id": "a1b2c3d4-5678-90ab-cdef-1234567890ab",
+  "user_id": "ec3fe238-8640-4649-8837-e1b2cfc19be8"
+}
+```
+
+**Errores posibles:**
+- `400` - Ya votaste por este video
+- `404` - Video no encontrado
+
+---
+
+### 10. Ver Ranking de Videos (sin auth)
+
+```bash
+curl "http://localhost:8080/api/public/rankings?page=1&page_size=20"
+```
+
+**Parámetros de query:**
+- `page` (opcional): Número de página (default: 1)
+- `page_size` (opcional): Resultados por página (default: 20, máx: 100)
+- `city` (opcional): Filtrar por ciudad
+- `country` (opcional): Filtrar por país
+
+**Respuesta (200 OK):**
+```json
+{
+  "rankings": [
+    {
+      "position": 1,
+      "video_id": "a1b2c3d4-5678-90ab-cdef-1234567890ab",
+      "title": "Mi Video Musical",
+      "vote_count": 150,
+      "artist_name": "Carlos Martinez",
+      "city": "Bogota",
+      "country": "Colombia"
+    },
+    {
+      "position": 2,
+      "video_id": "b2c3d4e5-6789-01bc-def0-2345678901bc",
+      "title": "Otro Video",
+      "vote_count": 120,
+      "artist_name": "Maria Lopez",
+      "city": "Medellin",
+      "country": "Colombia"
+    }
+  ],
+  "total": 50,
+  "page": 1,
+  "page_size": 20,
+  "total_pages": 3
+}
+```
+
+---
+
+## 🧪 Tests
+
+### Ejecutar Tests
+
+```bash
+# Ejecutar todos los tests
+docker-compose exec -T api pytest tests/ -v
+
+# Con reporte de cobertura
+docker-compose exec -T api pytest tests/ --cov=app --cov-report=term
+
+# Generar reporte HTML de cobertura
+docker-compose exec -T api pytest tests/ --cov=app --cov-report=html
+# Abre htmlcov/index.html en tu navegador
+
+# Ejecutar suite específica
+docker-compose exec -T api pytest tests/api/test_auth.py -v
+```
+
+### Cobertura de Tests
+
+**Cobertura actual: 79% (40 tests pasando)**
+
+**Desglose por archivo:**
+- `app/api/routes/auth.py` - **100%** (15 tests)
+- `app/api/routes/health.py` - **100%** (2 tests)
+- `app/api/routes/public.py` - **98%** (9 tests)
+- `app/api/routes/videos.py` - **82%** (14 tests)
+- `app/core/security.py` - **74%**
+- `app/db/models.py` - **95%**
+- `app/schemas/*` - **100%**
+
+**Suites de tests:**
+1. **Autenticación** (15 tests) - Signup, login, JWT, protección de endpoints
+2. **Gestión de Videos** (14 tests) - Upload, list, get, delete
+3. **Endpoints Públicos** (9 tests) - Videos públicos, votación, rankings
+4. **Health Check** (2 tests) - Verificación de salud del servicio
+
+### Pruebas con Postman/Newman
+
+```bash
+# Instalar newman (si no lo tienes)
+npm install -g newman
+
+# Ejecutar colección completa
+newman run collections/postman_collection.json \
+  -e collections/postman_environment.json \
+  --delay-request 1000
+
+# Ejecutar carpeta específica
+newman run collections/postman_collection.json \
+  -e collections/postman_environment.json \
+  --folder "Authentication"
+
+# Generar reporte HTML
+newman run collections/postman_collection.json \
+  -e collections/postman_environment.json \
+  -r html \
+  --reporter-html-export newman-report.html
+```
+
+Ver [collections/README.md](collections/README.md) para guía completa.
+
+---
+
+## 💻 Desarrollo
+
+### Configuración Local (sin Docker)
+
+```bash
+# Instalar Poetry
+curl -sSL https://install.python-poetry.org | python3 -
+
+# Instalar dependencias
+poetry install
+
+# Iniciar servicios de base de datos
+docker-compose up -d db redis
+
+# Ejecutar API
+poetry run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+
+# Ejecutar worker de Celery (en otra terminal)
+poetry run celery -A app.worker.celery_app worker --loglevel=info
+```
+
+### Variables de Entorno
+
+Configuradas en el archivo `.env`:
+
+```bash
+# Base de datos
 DATABASE_URL=postgresql://fastapi_user:fastapi_password@db:5432/fastapi_db
 
-# JWT Configuration (change in production!)
-SECRET_KEY=your-secret-key-change-this-in-production-use-openssl-rand-hex-32
+# JWT
+SECRET_KEY=your-secret-key-change-in-production
 ACCESS_TOKEN_EXPIRE_MINUTES=60
 
 # Celery
 CELERY_BROKER_URL=redis://redis:6379/0
 CELERY_RESULT_BACKEND=redis://redis:6379/0
 
-# Environment
+# Aplicación
+PROJECT_NAME=ANB Rising Stars Showcase API
+VERSION=1.0.0
 ENVIRONMENT=development
 ```
 
-**Important Configuration:**
-- **SECRET_KEY** - Use `openssl rand -hex 32` to generate a secure key for production
-- **ACCESS_TOKEN_EXPIRE_MINUTES** - Adjust based on security requirements
-  - Development: 120+ minutes (convenience)
-  - Production: 15-30 minutes (security)
-
-### Local Setup (without Docker)
+### Code Quality
 
 ```bash
-# Install Poetry
-curl -sSL https://install.python-poetry.org | python3 -
-
-# Install dependencies
-poetry install
-
-# Install pre-commit hooks (optional)
-poetry run pre-commit install
-
-# Start services (PostgreSQL and Redis needed)
-docker-compose up -d db redis
-
-# Run API
-poetry run uvicorn app.main:app --reload
-
-# Run Celery worker (in another terminal)
-poetry run celery -A app.worker.celery_app worker --loglevel=info
-```
-
-## 🔍 Code Quality
-
-### Linters and Formatters
-
-Run linters with Docker (recommended):
-
-```bash
-# Format code with Black
+# Formatear código
 docker-compose exec api poetry run black .
 
-# Sort imports
+# Ordenar imports
 docker-compose exec api poetry run isort .
 
-# Lint with flake8
+# Linting
 docker-compose exec api poetry run flake8 app tests
 
 # Type checking
 docker-compose exec api poetry run mypy app
 
-# Run all checks at once
+# Ejecutar todos los checks
 docker-compose exec api poetry run black . --check && \
   docker-compose exec api poetry run flake8 app tests && \
   docker-compose exec api poetry run mypy app
 ```
 
-**Tools configured:**
-- **Black** - Code formatter (line length: 100)
-- **isort** - Import sorter
-- **flake8** - Python linter (PEP 8 compliance)
-- **mypy** - Static type checker
+---
 
-### Running Tests
+## 🚀 Despliegue
 
-The project includes a comprehensive test suite with **40 tests** covering all major functionality:
+### Arquitectura
 
-```bash
-# Run all tests
-docker-compose exec -T api pytest tests/ -v
+El sistema está configurado con:
 
-# Run with coverage report
-docker-compose exec -T api pytest tests/ --cov=app --cov-report=term
+- **Gunicorn** con 4 workers Uvicorn para alto rendimiento
+- **Nginx** como reverse proxy con load balancing `least_conn`
+- **PostgreSQL** con connection pooling (10 base + 20 overflow por worker)
+- **Redis** para caché y cola de tareas de Celery
+- **Celery Worker** para procesamiento asíncrono de videos
 
-# Run with HTML coverage report
-docker-compose exec -T api pytest tests/ --cov=app --cov-report=html
-# Then open htmlcov/index.html in your browser
-
-# Run specific test file
-docker-compose exec -T api pytest tests/api/test_auth.py -v
-
-# Run tests in quiet mode
-docker-compose exec -T api pytest tests/ -q
-```
-
-### Test Coverage
-
-Current test coverage: **79%** (40 tests passing)
-
-**Coverage breakdown:**
-- `app/api/routes/auth.py` - **100%** (Authentication endpoints)
-- `app/api/routes/health.py` - **100%** (Health check)
-- `app/api/routes/public.py` - **98%** (Public videos, voting, rankings)
-- `app/api/routes/videos.py` - **82%** (Video management)
-- `app/core/security.py` - **74%** (JWT token management)
-- `app/db/models.py` - **95%** (Database models)
-- `app/schemas/*` - **100%** (All schemas)
-
-**Test suites:**
-- **Authentication Tests** (15 tests)
-  - User signup (success, duplicate email, password mismatch, validation errors)
-  - User login (success, wrong password, nonexistent user)
-  - JWT token functions (custom expiration, missing sub, nonexistent user)
-  - Protected endpoints (without token, invalid token, malformed header)
-
-- **Video Management Tests** (14 tests)
-  - Video upload (success, without auth, missing title, invalid file type, no file)
-  - List user videos (success, without auth, empty list)
-  - Get video detail (success, not owner, not found)
-  - Delete video (success, not owner, not found)
-
-- **Public Endpoints Tests** (9 tests)
-  - List public videos (success, empty list)
-  - Vote for video (success, without auth, duplicate vote, not found)
-  - Rankings (success, city filter, empty rankings)
-
-- **Health Check Tests** (2 tests)
-  - Health check endpoint validation
-
-### Infrastructure for Production
-
-The system is configured with production-grade infrastructure:
-
-**Infrastructure Components:**
-- Gunicorn with **4 Uvicorn workers** for parallel request handling
-- Nginx reverse proxy with **least_conn** load balancing
-- PostgreSQL connection pooling: **10 base + 20 overflow per worker**
-- Database optimized: **300 max_connections**, 256MB shared_buffers
-
-This configuration provides robust performance and scalability for production workloads.
-
-### Pre-commit Hooks (Optional)
-
-For local development with git hooks:
+### Comandos Docker
 
 ```bash
-# Install pre-commit hooks (requires local Poetry setup)
-docker-compose exec api poetry run pre-commit install
-
-# Run manually
-docker-compose exec api poetry run pre-commit run --all-files
-```
-
-## 🔄 CI/CD Pipeline
-
-This project includes a GitHub Actions workflow that automatically runs on every push and pull request to `main` or `develop` branches.
-
-### Pipeline Stages
-
-**Stage 1: Tests and Linting**
-- ✅ Sets up Python 3.13 and Poetry
-- ✅ Caches dependencies for faster builds
-- ✅ Runs linting with flake8
-- ✅ Checks code formatting with black
-- ✅ Performs type checking with mypy
-- ✅ Executes all pytest tests with coverage
-- ✅ Uploads coverage reports as artifacts
-
-**Stage 2: Docker Build**
-- ✅ Builds Docker image
-- ✅ Validates Docker Compose configuration
-- ✅ Uses build cache for optimization
-- ✅ Only runs if tests pass
-
-### Viewing Results
-
-After pushing code to GitHub:
-
-1. Go to your repository on GitHub
-2. Click on the **"Actions"** tab
-3. Select the latest workflow run
-4. View the results of each job
-5. Download coverage reports from the artifacts section
-
-### Pipeline Configuration
-
-The pipeline is defined in [`.github/workflows/ci.yml`](.github/workflows/ci.yml) and includes:
-
-- **Services:** PostgreSQL 16, Redis 7
-- **Python Version:** 3.13
-- **Tools:** Poetry, pytest, flake8, black, mypy
-- **Coverage:** XML and HTML reports generated
-- **Caching:** Dependencies and Docker layers cached for speed
-
-## 🐳 Docker Commands
-
-### Container Management
-
-```bash
-# Start services
+# Iniciar servicios
 docker-compose up -d
 
-# Start with rebuild
+# Reconstruir e iniciar
 docker-compose up --build -d
 
-# Stop services
+# Ver logs
+docker-compose logs -f api
+docker-compose logs -f worker
+docker-compose logs --tail=100 api
+
+# Detener servicios
 docker-compose stop
 
-# Stop and remove containers
-docker-compose down
-
-# Stop and remove everything (including volumes)
+# Eliminar todo (incluyendo volúmenes)
 docker-compose down -v
 
-# View logs
-docker-compose logs -f api      # API logs
-docker-compose logs -f worker   # Worker logs
-docker-compose logs --tail=50 api  # Last 50 lines
-
-# Execute commands
-docker-compose exec api bash    # Open shell
+# Ejecutar comando en contenedor
+docker-compose exec api bash
 docker-compose exec api python scripts/load_data.py
 
-# Restart services
+# Reiniciar servicios específicos
 docker-compose restart api worker
 ```
 
-### Database Operations
+### Base de Datos
 
 ```bash
-# Connect to PostgreSQL
+# Conectar a PostgreSQL
 docker-compose exec db psql -U fastapi_user -d fastapi_db
 
-# View users table
-docker-compose exec db psql -U fastapi_user -d fastapi_db -c "SELECT * FROM users;"
+# Ver tablas
+docker-compose exec db psql -U fastapi_user -d fastapi_db -c "\dt"
 
-# Backup database
+# Ver usuarios
+docker-compose exec db psql -U fastapi_user -d fastapi_db -c "SELECT id, email, first_name, last_name FROM users;"
+
+# Backup
 docker-compose exec db pg_dump -U fastapi_user fastapi_db > backup.sql
 
-# Restore database
+# Restore
 docker-compose exec -T db psql -U fastapi_user fastapi_db < backup.sql
 ```
 
 ### Celery Operations
 
 ```bash
-# View active tasks
+# Ver tareas activas
 docker-compose exec worker celery -A app.worker.celery_app inspect active
 
-# View registered tasks
+# Ver tareas registradas
 docker-compose exec worker celery -A app.worker.celery_app inspect registered
 
-# Purge all tasks from queue
+# Purgar todas las tareas de la cola
 docker-compose exec worker celery -A app.worker.celery_app purge
 ```
-## 📝 License
-
-This project is licensed under the MIT License.
-
-## 🙏 Acknowledgments
-
-Built with:
-- [FastAPI](https://fastapi.tiangolo.com/)
-- [SQLAlchemy](https://www.sqlalchemy.org/)
-- [Celery](https://docs.celeryproject.org/)
-- [Pydantic](https://docs.pydantic.dev/)
-- [Poetry](https://python-poetry.org/)
-- [Docker](https://www.docker.com/)
 
 ---
 
-**Need help?** Check the [interactive documentation](http://localhost:8080/docs) or review the code.
+## 📊 CI/CD Pipeline
+
+Pipeline automatizado con GitHub Actions que se ejecuta en cada push a `main` o `develop`:
+
+### Etapas
+
+1. **Tests y Linting**
+   - Setup de Python 3.13 y Poetry
+   - Ejecución de flake8, black y mypy
+   - Ejecución de 40 tests con pytest
+   - Generación de reporte de cobertura
+
+2. **Build de Docker**
+   - Construcción de imagen Docker
+   - Validación de docker-compose.yml
+   - Uso de caché para optimización
+
+3. **SonarQube** (condicional)
+   - Análisis de código estático
+   - Métricas de calidad y cobertura
+
+Ver configuración completa en [`.github/workflows/ci.yml`](.github/workflows/ci.yml)
+
+---
+
+## 📄 Licencia
+
+Este proyecto está bajo la Licencia MIT.
+
+---
+
+## 👥 Equipo
+
+Proyecto desarrollado para el curso MISO4204 - Desarrollo en la Nube, Universidad de los Andes.
+
+---
+
+## 🔗 Enlaces Útiles
+
+- [Documentación Interactiva (Swagger)](http://localhost:8080/docs)
+- [Documentación Alternativa (ReDoc)](http://localhost:8080/redoc)
+- [FastAPI Documentation](https://fastapi.tiangolo.com/)
+- [Celery Documentation](https://docs.celeryproject.org/)
+- [PostgreSQL Documentation](https://www.postgresql.org/docs/)
+- [Docker Documentation](https://docs.docker.com/)
+
+---
+
+**¿Necesitas ayuda?** Consulta la [documentación completa](docs/Entrega_1/arquitectura.md) o abre un issue en GitHub.
