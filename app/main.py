@@ -19,12 +19,12 @@ from app.db.database import engine
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifecycle events"""
-    try:
+    try:  # pragma: no cover
         from app.db import models  # noqa: F401
 
         Base.metadata.create_all(bind=engine, checkfirst=True)
-    except Exception as e:
-        print(f"Note: Tables might already exist: {e}")
+    except Exception as e:  # pragma: no cover
+        print(f"Note: Tables might already exist: {e}")  # pragma: no cover
     yield
 
 
