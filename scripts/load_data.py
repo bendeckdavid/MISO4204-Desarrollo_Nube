@@ -27,7 +27,6 @@ def load_example_data():
             return
 
         # Create example users
-        # Note: The password setter in User model automatically hashes with bcrypt
         user1 = models.User(
             email="artist1@example.com",
             first_name="Carlos",
@@ -35,7 +34,7 @@ def load_example_data():
             city="Bogota",
             country="Colombia",
         )
-        user1.password = "SecurePass123"  # Will be hashed by the setter
+        user1.password = "SecurePass123"
 
         user2 = models.User(
             email="artist2@example.com",
