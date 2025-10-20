@@ -20,7 +20,13 @@ from app.db.database import engine
 async def lifespan(app: FastAPI):
     """Lifecycle events"""
     # Startup: Create database tables
-    Base.metadata.create_all(bind=engine)
+    # Note: create_all() is safe to call multiple times as it checks for existing tables
+    # We wrap in try/except to handle race conditions from multiple workers
+    try:
+        Base.metadata.create_all(bind=engine, checkfirst=True)
+    except Exception as e:
+        # Log but don't fail - tables might already exist from another worker
+        print(f"Note: Tables might already exist (this is normal with multiple workers): {e}")
     yield
     # Shutdown: Cleanup if needed
 

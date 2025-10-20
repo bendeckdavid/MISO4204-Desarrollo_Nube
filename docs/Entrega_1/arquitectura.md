@@ -493,7 +493,7 @@ CREATE UNIQUE INDEX idx_votes_unique ON votes(user_id, video_id);
 
 ---
 
-**Tabla: votes** ⭐ NUEVA
+**Tabla: votes** 
 - id (UUID, PK)
 - user_id (UUID, FK → users.id, NOT NULL)
 - video_id (UUID, FK → videos.id, NOT NULL)
