@@ -306,14 +306,15 @@ class SignupRequest(BaseModel):
 ```
 tests/
 ├── conftest.py          # Fixtures compartidos
-├── api/
-│   ├── test_auth.py     # 13 tests (signup, login, protected)
-│   └── test_videos.py   # Tests de videos
-└── workers/
-    └── test_video_processing.py
+└── api/
+    ├── test_auth.py     # 15 tests (signup, login, JWT, protected endpoints)
+    ├── test_health.py   # 2 tests (health check)
+    ├── test_public.py   # 9 tests (videos públicos, votación, rankings)
+    └── test_videos.py   # 14 tests (upload, list, detail, delete)
 ```
 
-**Coverage actual**: 88%
+**Total de tests**: 40 tests
+**Coverage actual**: 79%
 
 ### 6.2 PostgreSQL para Tests
 
@@ -374,7 +375,7 @@ Job 1: Test & Lint
   - Install Poetry dependencies
   - Run flake8 (linting)
   - Run black (formatting)
-  - Run pytest (coverage 88%)
+  - Run pytest (40 tests, coverage 79%)
   - Upload coverage report
 
 Job 2: Build Docker

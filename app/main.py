@@ -21,6 +21,7 @@ async def lifespan(app: FastAPI):
     """Lifecycle events"""
     try:
         from app.db import models  # noqa: F401
+
         Base.metadata.create_all(bind=engine, checkfirst=True)
     except Exception as e:
         print(f"Note: Tables might already exist: {e}")
