@@ -129,7 +129,10 @@ class TestVideoUpload:
             headers={"Authorization": f"Bearer {token}"},
         )
 
-        assert response.status_code in [status.HTTP_400_BAD_REQUEST, status.HTTP_422_UNPROCESSABLE_ENTITY]
+        assert response.status_code in [
+            status.HTTP_400_BAD_REQUEST,
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+        ]
 
 
 class TestListMyVideos:
@@ -311,6 +314,7 @@ class TestGetVideoDetail:
         token = create_access_token(data={"sub": str(user.id)})
 
         import uuid
+
         fake_id = str(uuid.uuid4())
 
         response = client.get(
@@ -421,6 +425,7 @@ class TestDeleteVideo:
         token = create_access_token(data={"sub": str(user.id)})
 
         import uuid
+
         fake_id = str(uuid.uuid4())
 
         response = client.delete(

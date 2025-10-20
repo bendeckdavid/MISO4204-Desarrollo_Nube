@@ -230,6 +230,7 @@ class TestVoteVideo:
         token = create_access_token(data={"sub": str(user.id)})
 
         import uuid
+
         fake_id = str(uuid.uuid4())
 
         response = client.post(

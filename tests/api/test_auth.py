@@ -222,10 +222,7 @@ class TestTokenFunctions:
         db.refresh(user)
 
         # Create token with custom 1-minute expiration
-        token = create_access_token(
-            data={"sub": str(user.id)},
-            expires_delta=timedelta(minutes=1)
-        )
+        token = create_access_token(data={"sub": str(user.id)}, expires_delta=timedelta(minutes=1))
 
         # Token should work immediately
         response = client.get(
