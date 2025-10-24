@@ -13,9 +13,12 @@ class Settings(BaseSettings):
     MAX_VIDEO_SIZE: int = 10 * 1024 * 1024  # 10 MB
 
     # File Storage (Container-aware paths)
-    UPLOAD_BASE_DIR: str = "/app/videos/uploads"
-    PROCESSED_BASE_DIR: str = "/app/videos/processed"
-    APP_BASE_DIR: str = "/app"  # Container working directory
+    # For AWS deployment with NFS, use /app/media
+    # For local Docker, this gets mounted from docker volumes
+    MEDIA_ROOT: str = "/app/media"
+    UPLOAD_BASE_DIR: str = "/app/media/uploads"
+    PROCESSED_BASE_DIR: str = "/app/media/processed"
+    APP_BASE_DIR: str = "/app"  # Container/EC2 working directory
 
     # Database
     DATABASE_URL: str

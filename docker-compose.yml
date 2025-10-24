@@ -40,6 +40,7 @@ services:
     command: gunicorn app.main:app --workers 4 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000 --timeout 120 --keep-alive 5 --max-requests 1000 --max-requests-jitter 100
     volumes:
       - .:/app
+      - media_data:/app/media  # Shared media storage
     environment:
       - DB_POOL_SIZE=10
       - DB_MAX_OVERFLOW=20
@@ -63,6 +64,7 @@ services:
     command: celery -A app.worker.celery_app worker --loglevel=info
     volumes:
       - .:/app
+      - media_data:/app/media  # Shared media storage
     env_file:
       - .env
     depends_on:
@@ -91,6 +93,7 @@ services:
 
 volumes:
   postgres_data:
+  media_data:  # Shared volume for uploaded and processed videos
 
 networks:
   app_network:
