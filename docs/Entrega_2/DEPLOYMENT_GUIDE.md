@@ -61,7 +61,37 @@ Guía paso a paso para desplegar la aplicación ANB Rising Stars Showcase en AWS
 - SSH client instalado
 - Git con el repositorio actualizado
 
-### Preparar antes de empezar
+### Configuración Local Inicial
+
+**ANTES de empezar con AWS**, prepara tu entorno local:
+
+1. **Clonar/actualizar el repositorio**:
+   ```bash
+   # Si no lo tienes, clonarlo
+   git clone https://github.com/tu-usuario/MISO4204-Desarrollo_Nube.git
+   cd MISO4204-Desarrollo_Nube
+
+   # Si ya lo tienes, actualizarlo
+   git pull origin main
+   ```
+
+2. **Verificar que tienes los scripts**:
+   ```bash
+   ls -lh deployment/ec2-setup/
+   # Deberías ver:
+   # 01-fileserver-setup.sh
+   # 02-webserver-setup.sh
+   # 03-worker-setup.sh
+   ```
+
+3. **Anotar la ruta completa del proyecto**:
+   ```bash
+   pwd
+   # Ejemplo: /home/usuario/MISO4204-Desarrollo_Nube
+   ```
+   📝 **Guarda esta ruta**, la usarás para los comandos `scp`
+
+### Preparar antes de empezar AWS
 
 1. **Obtener tu IP pública** (para SSH):
    ```bash
@@ -79,9 +109,13 @@ Guía paso a paso para desplegar la aplicación ANB Rising Stars Showcase en AWS
    ```txt
    # aws-info.txt (NO SUBIR A GIT)
 
+   ## Rutas Locales
+   Proyecto: /home/juan-perdomo/Documentos/workspaces/miso/MISO4204-Desarrollo_Nube
+   Key Pair: /home/juan-perdomo/Downloads/anb-key-pair.pem
+
+   ## Información AWS
    Mi IP Pública: _______________
    SECRET_KEY: _______________
-
    GitHub Repo: https://github.com/_______________
 
    VPC ID: _______________
@@ -98,6 +132,15 @@ Guía paso a paso para desplegar la aplicación ANB Rising Stars Showcase en AWS
 
    RDS Endpoint: _______________
    RDS Password: _______________
+   ```
+
+   📝 **Ejemplo de comandos con rutas reales**:
+   ```bash
+   # Copiar script al File Server
+   cd /home/juan-perdomo/Documentos/workspaces/miso/MISO4204-Desarrollo_Nube
+   scp -i ~/Downloads/anb-key-pair.pem \
+       deployment/ec2-setup/01-fileserver-setup.sh \
+       ubuntu@54.165.186.145:~
    ```
 
 ---
@@ -262,8 +305,8 @@ Hacer esto para **ambas subnets**:
 4. Esperar ~2 minutos a que la instancia esté "Running"
 
 5. **Anotar las IPs**:
-   - Public IPv4: `_______________`
-   - Private IPv4: `_______________`
+   - Public IPv4: 54.165.186.145
+   - Private IPv4: 10.0.1.75
 
 ### 2.3 Conectarse al File Server
 
@@ -273,30 +316,18 @@ ssh -i anb-key-pair.pem ubuntu@<FILE_SERVER_PUBLIC_IP>
 
 Si te pide confirmación, escribe `yes`.
 
-### 2.4 Copiar y Ejecutar Script de Configuración
+### 2.4 Nota Importante
 
-**En tu máquina local**, copia el script al servidor:
+⚠️ **NO CONFIGURES el File Server todavía**. Solo lo creamos para tener la instancia lista.
 
-```bash
-scp -i anb-key-pair.pem \
-    deployment/ec2-setup/01-fileserver-setup.sh \
-    ubuntu@<FILE_SERVER_PUBLIC_IP>:~
-```
+**Configuraremos el File Server después de crear y configurar el Web Server y Worker**, porque necesitamos sus IPs privadas para configurar las exportaciones NFS.
 
-**En el File Server** (vía SSH):
-
-```bash
-# Editar el script
-nano 01-fileserver-setup.sh
-
-# Dejar las IPs vacías por ahora (las llenaremos después):
-# WEBSERVER_PRIVATE_IP=""
-# WORKER_PRIVATE_IP=""
-
-# Salir sin guardar (Ctrl+X, luego N)
-```
-
-**Por ahora NO ejecutes el script**. Lo haremos después de crear el Web Server y Worker para tener sus IPs privadas.
+**El orden de configuración será**:
+1. ✅ Crear File Server (acabas de hacerlo)
+2. ⏭️ Crear RDS (siguiente paso)
+3. ⏭️ Crear y configurar Web Server
+4. ⏭️ Crear y configurar Worker
+5. ⏭️ **Entonces configurar File Server** con las IPs del Web Server y Worker
 
 ---
 
@@ -432,76 +463,25 @@ nano 01-fileserver-setup.sh
    - Public IPv4: `_______________`
    - Private IPv4: `_______________`
 
-### 4.3 Conectarse al Web Server
+### 4.3 Nota Importante
 
-```bash
-ssh -i anb-key-pair.pem ubuntu@<WEB_SERVER_PUBLIC_IP>
-```
+⚠️ **NO CONFIGURES el Web Server todavía**. Solo lo creamos para tener la instancia y su IP privada.
 
-### 4.4 Copiar y Ejecutar Script de Configuración
-
-**En tu máquina local**:
-
-```bash
-scp -i anb-key-pair.pem \
-    deployment/ec2-setup/02-webserver-setup.sh \
-    ubuntu@<WEB_SERVER_PUBLIC_IP>:~
-```
-
-**En el Web Server** (vía SSH):
-
-```bash
-# Editar el script
-nano 02-webserver-setup.sh
-```
-
-**Configurar estas variables**:
-```bash
-FILESERVER_PRIVATE_IP="<IP_PRIVADA_FILE_SERVER>"
-RDS_ENDPOINT="<RDS_ENDPOINT>"  # Sin puerto, sin postgresql://
-RDS_PASSWORD="<TU_RDS_PASSWORD>"
-SECRET_KEY="<TU_SECRET_KEY>"
-GITHUB_REPO="https://github.com/tu-usuario/MISO4204-Desarrollo_Nube.git"
-GITHUB_BRANCH="main"  # o tu rama
-```
-
-**Guardar** (Ctrl+O, Enter, Ctrl+X)
-
-**Ejecutar el script** (tomará ~15 minutos):
-```bash
-chmod +x 02-webserver-setup.sh
-./02-webserver-setup.sh
-```
-
-⏳ **Esperar a que termine...**
-
-### 4.5 Verificar Web Server
-
-```bash
-# Verificar servicios
-sudo systemctl status fastapi
-sudo systemctl status nginx
-sudo systemctl status redis-server
-
-# Verificar montaje NFS
-df -h | grep /app/media
-
-# Probar health check
-curl http://localhost:8080/health
-```
-
-**Desde tu máquina local**:
-```bash
-curl http://<WEB_SERVER_PUBLIC_IP>:8080/health
-```
-
-✅ **Deberías ver**: `{"status":"healthy","version":"1.0.0"}`
+**Lo configuraremos en el Paso 5 después de configurar el File Server**, cuando tengamos el NFS listo.
 
 ---
 
-## Paso 5: Worker
+## Paso 5: Configuración de Servicios
 
-**Tiempo estimado: 20 minutos**
+**Tiempo estimado: 60 minutos**
+
+En este paso configuraremos todos los servicios en el orden correcto:
+1. Crear instancia Worker
+2. Actualizar Security Groups
+3. Configurar File Server (NFS)
+4. **Configurar Web Server** (ahora que NFS está listo)
+5. **Configurar Worker**
+6. Montar NFS en ambos servidores
 
 ### 5.1 Crear Security Group para Worker
 
@@ -565,10 +545,16 @@ Ahora que tenemos todas las IPs, vamos a restringir el acceso:
 #### Actualizar `ANB-WebServer-SG`:
 
 1. Seleccionar `ANB-WebServer-SG` → **Edit inbound rules**
-2. **Modificar** la regla de Redis:
-   - Cambiar Source de `0.0.0.0/0` a `ANB-Worker-SG`
+2. **Eliminar** la regla existente de Redis (puerto 6379 con source 0.0.0.0/0)
+3. **Agregar nueva regla**:
 
-3. **Save rules**
+   | Type | Port | Source | Description |
+   |------|------|--------|-------------|
+   | Custom TCP | 6379 | ANB-Worker-SG | Redis from Worker |
+
+4. **Save rules**
+
+   ⚠️ **Nota**: No puedes modificar el source de CIDR a Security Group, debes eliminar y recrear la regla.
 
 #### Actualizar `ANB-RDS-SG`:
 
@@ -585,9 +571,19 @@ Ahora que tenemos todas las IPs, vamos a restringir el acceso:
 
 ### 5.4 Configurar File Server (Ahora que tenemos todas las IPs)
 
+⚠️ **IMPORTANTE**: Ahora sí vamos a configurar el File Server porque ya tenemos todas las IPs.
+
+**Copiar el script al File Server** (desde tu máquina local):
+```bash
+cd /ruta/a/MISO4204-Desarrollo_Nube
+scp -i /ruta/a/anb-key-pair.pem \
+    deployment/ec2-setup/01-fileserver-setup.sh \
+    ubuntu@<FILE_SERVER_PUBLIC_IP>:~
+```
+
 **Conectarse al File Server**:
 ```bash
-ssh -i anb-key-pair.pem ubuntu@<FILE_SERVER_PUBLIC_IP>
+ssh -i /ruta/a/anb-key-pair.pem ubuntu@<FILE_SERVER_PUBLIC_IP>
 ```
 
 **Editar el script**:
@@ -609,18 +605,83 @@ chmod +x 01-fileserver-setup.sh
 ./01-fileserver-setup.sh
 ```
 
-### 5.5 Conectarse al Worker
+⏳ **Esperar a que termine la configuración del NFS...**
+
+---
+
+### 5.5 Configurar Web Server (Ahora con NFS listo)
+
+✅ **Ahora sí podemos configurar el Web Server** porque el File Server ya está exportando NFS.
+
+**Copiar el script al Web Server** (desde tu máquina local):
 
 ```bash
-ssh -i anb-key-pair.pem ubuntu@<WORKER_PUBLIC_IP>
+# Asegúrate de estar en el directorio del proyecto
+cd /ruta/a/MISO4204-Desarrollo_Nube
+
+# Ejemplo con tus rutas reales:
+# cd /home/juan-perdomo/Documentos/workspaces/miso/MISO4204-Desarrollo_Nube
+
+# Copiar el script
+scp -i /ruta/a/anb-key-pair.pem \
+    deployment/ec2-setup/02-webserver-setup.sh \
+    ubuntu@<WEB_SERVER_PUBLIC_IP>:~
 ```
 
-### 5.6 Copiar y Ejecutar Script de Configuración
-
-**En tu máquina local**:
+**Conectarse al Web Server**:
 
 ```bash
-scp -i anb-key-pair.pem \
+ssh -i /ruta/a/anb-key-pair.pem ubuntu@<WEB_SERVER_PUBLIC_IP>
+```
+
+**Editar el script para configurar las variables**:
+## QUEDE ACA SE CAYO EL ENTORNO DE PYTHON
+```bash
+nano 02-webserver-setup.sh
+```
+
+**Buscar la sección de variables (líneas 36-44) y configurar**:
+```bash
+FILESERVER_PRIVATE_IP="<IP_PRIVADA_FILE_SERVER>"      # Ejemplo: 10.0.1.139
+RDS_ENDPOINT="<RDS_ENDPOINT>"                          # Ejemplo: anb-db.xxxxx.us-east-1.rds.amazonaws.com (SIN puerto, SIN postgresql://)
+RDS_PASSWORD="<TU_RDS_PASSWORD>"                       # El password que configuraste en RDS
+SECRET_KEY=""                                           # Dejar vacío, se generará automáticamente
+GITHUB_REPO="https://github.com/tu-usuario/MISO4204-Desarrollo_Nube.git"
+GITHUB_BRANCH="main"                                    # O feature/Implement-aws-infra si estás en esa rama
+```
+
+💡 **Tip sobre SECRET_KEY**: El script generará uno automáticamente y lo mostrará al final. **Debes guardarlo** para usarlo en el Worker.
+
+**Guardar** (Ctrl+O, Enter, Ctrl+X)
+
+**Ejecutar el script** (tomará ~15 minutos):
+```bash
+chmod +x 02-webserver-setup.sh
+./02-webserver-setup.sh
+```
+
+⏳ **Esperar a que termine la instalación...**
+
+**Al finalizar, el script mostrará**:
+- ⚠️ Aviso de que NFS no está montado (esto es normal)
+- ✅ Confirmación de servicios activos (FastAPI, Nginx, Redis)
+- 🔑 Un SECRET_KEY generado - **GUÁRDALO** para el paso del Worker
+- 🌐 La IP pública para acceder a la API
+
+📝 **IMPORTANTE**: Anota el SECRET_KEY que se muestra, lo necesitarás para configurar el Worker.
+
+---
+
+### 5.6 Configurar Worker
+
+**En tu máquina local**, copiar el script al Worker:
+
+```bash
+# Asegúrate de estar en el directorio del proyecto
+cd /ruta/a/MISO4204-Desarrollo_Nube
+
+# Copiar el script
+scp -i /ruta/a/anb-key-pair.pem \
     deployment/ec2-setup/03-worker-setup.sh \
     ubuntu@<WORKER_PUBLIC_IP>:~
 ```
@@ -653,13 +714,83 @@ chmod +x 03-worker-setup.sh
 
 ⏳ **Esperar a que termine...**
 
-### 5.7 Verificar Worker
+### 5.7 Montar NFS en Web Server y Worker
+
+✅ Ahora que el File Server está configurado y exportando NFS, podemos montar el sistema de archivos compartido.
+
+**En el Web Server**:
+```bash
+# Conectarse al Web Server
+ssh -i /ruta/a/anb-key-pair.pem ubuntu@<WEB_SERVER_PUBLIC_IP>
+
+# Montar NFS desde File Server
+sudo mount -t nfs <FILESERVER_PRIVATE_IP>:/shared/media /app/media
+
+# Verificar que el montaje fue exitoso
+df -h | grep /app/media
+# Deberías ver algo como:
+# 10.0.1.139:/shared/media   50G  1.8G   46G   4% /app/media
+
+# Descomentar la línea en fstab para montaje permanente al reiniciar
+sudo sed -i 's/^# \(.*\/app\/media.*\)/\1/' /etc/fstab
+
+# Verificar que fstab quedó bien configurado
+cat /etc/fstab | grep /app/media
+
+# Crear directorios necesarios en el NFS compartido (si no existen)
+sudo mkdir -p /app/media/uploads
+sudo mkdir -p /app/media/processed
+sudo chown -R appuser:appuser /app/media
+
+# Reiniciar servicio FastAPI para que use el NFS
+sudo systemctl restart fastapi
+
+# Verificar que FastAPI está corriendo correctamente
+sudo systemctl status fastapi
+
+# Verificar que la API responde
+curl http://localhost:8080/health
+```
+
+**En el Worker**:
+```bash
+# Conectarse al Worker
+ssh -i /ruta/a/anb-key-pair.pem ubuntu@<WORKER_PUBLIC_IP>
+
+# Montar NFS desde File Server
+sudo mount -t nfs <FILESERVER_PRIVATE_IP>:/shared/media /app/media
+
+# Verificar que el montaje fue exitoso
+df -h | grep /app/media
+# Deberías ver el mismo sistema de archivos que en el Web Server
+
+# Descomentar la línea en fstab para montaje permanente
+sudo sed -i 's/^# \(.*\/app\/media.*\)/\1/' /etc/fstab
+
+# Verificar que fstab quedó bien configurado
+cat /etc/fstab | grep /app/media
+
+# Verificar que los directorios existen y tienen permisos correctos
+ls -la /app/media/
+# Deberías ver: uploads/ y processed/
+
+# Reiniciar servicio Celery para que use el NFS
+sudo systemctl restart celery
+
+# Verificar que Celery está corriendo correctamente
+sudo systemctl status celery
+
+# Verificar logs de Celery
+sudo journalctl -u celery -n 20 --no-pager
+```
+
+### 5.8 Verificar Worker
 
 ```bash
 # Verificar servicio Celery
 sudo systemctl status celery
 
-# Verificar montaje NFS
+# Verificar montaje NFS (debería mostrar el montaje ahora)
 df -h | grep /app/media
 
 # Verificar conexión a Redis

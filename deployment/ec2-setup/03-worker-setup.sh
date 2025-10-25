@@ -137,26 +137,19 @@ else
 fi
 echo ""
 
-# 4. Montar NFS
-print_message "[4/9] Montando NFS desde File Server..."
+# 4. Preparar directorio para NFS (montar más tarde)
+print_message "[4/9] Preparando directorio para NFS..."
 sudo mkdir -p /app/media
 
-# Intentar montar
-if sudo mount -t nfs ${FILESERVER_PRIVATE_IP}:/shared/media /app/media; then
-    print_message "NFS montado exitosamente ✓"
-else
-    print_error "No se pudo montar NFS"
-    print_info "Verifica:"
-    echo "  1. El File Server está corriendo"
-    echo "  2. La IP privada es correcta: $FILESERVER_PRIVATE_IP"
-    echo "  3. El Security Group permite NFS (puerto 2049)"
-    exit 1
-fi
+print_info "El NFS se montará después de configurar el File Server"
+print_info "Para montar manualmente, ejecuta:"
+echo "  sudo mount -t nfs ${FILESERVER_PRIVATE_IP}:/shared/media /app/media"
+echo ""
 
-# Hacer montaje permanente
+# Preparar entrada en fstab (comentada por ahora)
 if ! grep -q "/app/media" /etc/fstab; then
-    echo "${FILESERVER_PRIVATE_IP}:/shared/media /app/media nfs defaults,_netdev 0 0" | sudo tee -a /etc/fstab
-    print_message "Montaje NFS configurado en /etc/fstab ✓"
+    echo "# ${FILESERVER_PRIVATE_IP}:/shared/media /app/media nfs defaults,_netdev 0 0" | sudo tee -a /etc/fstab
+    print_message "Entrada NFS preparada en /etc/fstab (comentada) ✓"
 fi
 echo ""
 
@@ -172,17 +165,12 @@ echo ""
 
 # 6. Clonar repositorio
 print_message "[6/9] Clonando repositorio desde GitHub..."
-cd /home/appuser
 
-if [ -d "MISO4204-Desarrollo_Nube" ]; then
+if sudo test -d "/home/appuser/MISO4204-Desarrollo_Nube"; then
     print_info "Repositorio ya existe, actualizando..."
-    cd MISO4204-Desarrollo_Nube
-    sudo -u appuser git fetch origin
-    sudo -u appuser git checkout $GITHUB_BRANCH
-    sudo -u appuser git pull origin $GITHUB_BRANCH
+    sudo -u appuser bash -c "cd /home/appuser/MISO4204-Desarrollo_Nube && git fetch origin && git checkout $GITHUB_BRANCH && git pull origin $GITHUB_BRANCH"
 else
-    sudo -u appuser git clone -b $GITHUB_BRANCH $GITHUB_REPO
-    cd MISO4204-Desarrollo_Nube
+    sudo -u appuser bash -c "cd /home/appuser && git clone -b $GITHUB_BRANCH $GITHUB_REPO"
 fi
 
 print_message "Repositorio clonado/actualizado ✓"
@@ -190,11 +178,22 @@ echo ""
 
 # 7. Configurar entorno Python
 print_message "[7/9] Configurando entorno Python..."
-sudo -u appuser python3.11 -m venv .venv
-sudo -u appuser .venv/bin/pip install --upgrade pip --quiet
-sudo -u appuser .venv/bin/pip install poetry --quiet
-sudo -u appuser .venv/bin/poetry config virtualenvs.create false
-sudo -u appuser .venv/bin/poetry install --no-dev --quiet
+
+print_info "Creando entorno virtual..."
+sudo -u appuser bash -c "cd /home/appuser/MISO4204-Desarrollo_Nube && python3.11 -m venv .venv"
+
+print_info "Actualizando pip..."
+sudo -u appuser bash -c "cd /home/appuser/MISO4204-Desarrollo_Nube && .venv/bin/pip install --upgrade pip -q"
+
+print_info "Instalando poetry..."
+sudo -u appuser bash -c "cd /home/appuser/MISO4204-Desarrollo_Nube && .venv/bin/pip install poetry -q"
+
+print_info "Configurando poetry..."
+sudo -u appuser bash -c "cd /home/appuser/MISO4204-Desarrollo_Nube && .venv/bin/poetry config virtualenvs.create false"
+
+print_info "Instalando dependencias (esto puede tomar varios minutos)..."
+sudo -u appuser bash -c "cd /home/appuser/MISO4204-Desarrollo_Nube && .venv/bin/poetry install --no-dev"
+
 print_message "Entorno Python configurado ✓"
 echo ""
 
@@ -291,7 +290,10 @@ if df -h | grep -q "/app/media"; then
     print_message "✓ NFS montado correctamente"
     df -h | grep "/app/media"
 else
-    print_error "✗ NFS no está montado"
+    print_warning "⚠ NFS no está montado aún (esto es normal)"
+    print_info "Monta NFS después de configurar el File Server con:"
+    echo "  sudo mount -t nfs ${FILESERVER_PRIVATE_IP}:/shared/media /app/media"
+    echo "  sudo sed -i 's/^# //' /etc/fstab  # Descomentar línea NFS"
 fi
 echo ""
 
