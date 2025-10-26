@@ -34,7 +34,7 @@ API para la gestión de videos de artistas emergentes con sistema de votación y
 
 - Docker >= 20.10
 - Docker Compose >= 2.0
-- Python 3.13+ (solo para desarrollo local)
+- Python 3.12+ (solo para desarrollo local)
 
 ### 1. Clonar y Configurar
 
@@ -761,7 +761,7 @@ Pipeline automatizado con GitHub Actions que se ejecuta en cada push a `main` o 
 ### Etapas
 
 1. **Tests y Linting**
-   - Setup de Python 3.13 y Poetry
+   - Setup de Python 3.12 y Poetry
    - Ejecución de flake8, black y mypy
    - Ejecución de 40 tests con pytest
    - Generación de reporte de cobertura
