@@ -1,6 +1,6 @@
-# Guía de Despliegue en AWS - Entrega 2
+# Guía de Despliegue en AWS
 
-Guía paso a paso para desplegar la aplicación ANB Rising Stars Showcase en AWS, creando y configurando cada componente de forma incremental.
+Guía completa para el despliegue de la aplicación ANB Rising Stars Showcase en Amazon Web Services, configurando cada componente de la arquitectura de forma manual y detallada.
 
 ## Índice
 - [Arquitectura Objetivo](#arquitectura-objetivo)
@@ -262,7 +262,6 @@ Hacer esto para **ambas subnets**:
 
 ## Paso 2: File Server (NFS)
 
-**Tiempo estimado: 15 minutos**
 
 ### 2.1 Crear Security Group para File Server
 
@@ -334,7 +333,6 @@ Si te pide confirmación, escribe `yes`.
 
 ## Paso 3: Amazon RDS
 
-**Tiempo estimado: 20 minutos (incluye tiempo de espera)**
 
 ### 3.1 Crear Security Group para RDS
 
@@ -416,7 +414,6 @@ Si te pide confirmación, escribe `yes`.
 
 ## Paso 4: Web Server
 
-**Tiempo estimado: 25 minutos**
 
 ### 4.1 Crear Security Group para Web Server
 
@@ -474,7 +471,6 @@ Si te pide confirmación, escribe `yes`.
 
 ## Paso 5: Configuración de Servicios
 
-**Tiempo estimado: 60 minutos**
 
 En este paso configuraremos todos los servicios en el orden correcto:
 1. Crear instancia Worker
@@ -806,7 +802,6 @@ sudo journalctl -u celery -n 20
 
 ## Paso 6: Verificación Final
 
-**Tiempo estimado: 10 minutos**
 
 ### 6.1 Verificar Arquitectura Completa
 

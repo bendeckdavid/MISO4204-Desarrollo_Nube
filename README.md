@@ -1,6 +1,29 @@
 # ANB Rising Stars Showcase API
 
-API para la gestión de videos de artistas emergentes con sistema de votación y rankings. Proyecto desarrollado con FastAPI, PostgreSQL, Celery, Redis y Docker para el curso MISO4204 - Desarrollo en la Nube.
+API para la gestión de videos de artistas emergentes con sistema de votación y rankings. Proyecto desarrollado con FastAPI, PostgreSQL, Celery, Redis y desplegado en AWS para el curso MISO4204 - Desarrollo en la Nube.
+
+---
+
+## 📢 Entrega 2 - Despliegue en AWS
+
+La aplicación ha sido desplegada exitosamente en **Amazon Web Services (AWS)** con una arquitectura distribuida de 3 instancias EC2 más Amazon RDS.
+
+### Infraestructura AWS
+
+- **3 Instancias EC2 t3.small**: Web Server, Worker, File Server (NFS)
+- **Amazon RDS db.t3.micro**: PostgreSQL 16
+- **VPC personalizada** con Security Groups configurados
+- **Almacenamiento**: EBS gp3 (50 GiB por instancia) + RDS gp3 (20 GiB)
+
+### Documentación Completa
+
+📖 **[Ver Documentación de Entrega 2](docs/Entrega_2/README.md)**
+
+- [Arquitectura AWS](docs/Entrega_2/ARQUITECTURA_AWS.md) - Diagramas y decisiones de diseño
+- [Guía de Despliegue](docs/Entrega_2/AWS_DEPLOYMENT.md) - Paso a paso completo
+- [Análisis de Capacidad](capacity-planning/pruebas_de_carga_entrega2.md) - Pruebas de carga
+
+---
 
 ## 🚀 Características
 
@@ -166,7 +189,16 @@ MISO4204-Desarrollo_Nube/
 
 ## 📚 Documentación
 
-### Documentos Disponibles
+### Entrega 2 - Despliegue en AWS (Actual)
+
+| Documento | Descripción |
+|-----------|-------------|
+| **[Índice Entrega 2](docs/Entrega_2/README.md)** | Punto de entrada a toda la documentación de AWS |
+| **[Arquitectura AWS](docs/Entrega_2/ARQUITECTURA_AWS.md)** | Arquitectura completa del despliegue en AWS:<br>• Diagramas de infraestructura y componentes<br>• Servicios de AWS utilizados (EC2, RDS, VPC)<br>• Cambios respecto a Entrega 1<br>• Decisiones de diseño y trade-offs<br>• Roadmap de escalabilidad |
+| **[Guía de Despliegue AWS](docs/Entrega_2/AWS_DEPLOYMENT.md)** | Guía paso a paso para desplegar en AWS:<br>• Configuración de VPC y Security Groups<br>• Creación y configuración de EC2 (Web, Worker, NFS)<br>• Configuración de Amazon RDS PostgreSQL<br>• Scripts de automatización<br>• Troubleshooting |
+| **[Análisis de Capacidad](capacity-planning/pruebas_de_carga_entrega2.md)** | Pruebas de carga y análisis de rendimiento:<br>• Escenario 1: Carga de lecturas<br>• Escenario 2: Upload y procesamiento<br>• Métricas de performance (throughput, latencia)<br>• Cuellos de botella identificados<br>• Recomendaciones de escalabilidad |
+
+### Entrega 1 - Desarrollo Local
 
 | Documento | Ubicación | Descripción |
 |-----------|-----------|-------------|
@@ -174,8 +206,14 @@ MISO4204-Desarrollo_Nube/
 | **Decisiones de Diseño** | [docs/Entrega_1/decisiones_diseno.md](docs/Entrega_1/decisiones_diseno.md) | Decisiones arquitectónicas y justificaciones |
 | **Modelo de Datos** | [docs/Entrega_1/modelo_datos.md](docs/Entrega_1/modelo_datos.md) | Modelo relacional y relaciones entre entidades |
 | **Reporte SonarQube** | [docs/Entrega_1/reporte_sonarqube.md](docs/Entrega_1/reporte_sonarqube.md) | Análisis de calidad de código, cobertura, seguridad y mantenibilidad |
-| **Pruebas de Carga** | [docs/Entrega_1/pruebas_carga/reporte.md](docs/Entrega_1/pruebas_carga/reporte.md) | Resultados y análisis de pruebas de rendimiento |
+| **Pruebas de Carga** | [docs/Entrega_1/pruebas_carga/reporte.md](docs/Entrega_1/pruebas_carga/reporte.md) | Resultados y análisis de pruebas de rendimiento local |
+
+### Recursos Adicionales
+
+| Documento | Ubicación | Descripción |
+|-----------|-----------|-------------|
 | **Colección de Postman** | [collections/README.md](collections/README.md) | Guía completa para usar la colección con Postman y Newman |
+| **Scripts de Despliegue** | [deployment/ec2-setup/](deployment/ec2-setup/) | Scripts automatizados para configurar EC2 en AWS |
 
 ### Diagramas
 
