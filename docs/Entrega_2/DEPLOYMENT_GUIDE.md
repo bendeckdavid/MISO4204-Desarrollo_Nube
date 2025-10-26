@@ -883,12 +883,22 @@ export TOKEN="<tu_access_token>"
 **Opción A: Usar un video que ya tengas**:
 ```bash
 # Si tienes un video en tu máquina local, úsalo directamente
+# ⚠️ IMPORTANTE: El @ antes de la ruta es necesario para indicar que es un archivo
 curl -X POST $API_URL/api/videos/upload \
   -H "Authorization: Bearer $TOKEN" \
-  -F "file=@/ruta/a/tu/video.mp4" \
+  -F "file=@/ruta/a/tu/video.mp4;type=video/mp4" \
   -F "title=Video Prueba AWS" \
   -F "description=Prueba de procesamiento en AWS"
+
+# Ejemplo con ruta relativa:
+# curl -X POST $API_URL/api/videos/upload \
+#   -H "Authorization: Bearer $TOKEN" \
+#   -F "file=@./mi_video.mp4;type=video/mp4" \
+#   -F "title=Video Prueba AWS" \
+#   -F "description=Prueba de procesamiento en AWS"
 ```
+
+💡 **Nota sobre el tipo MIME**: Si obtienes el error `"File must be a video format"`, agrega `;type=video/mp4` después del nombre del archivo (como se muestra arriba). Esto le indica a curl que envíe el archivo con el tipo MIME correcto.
 
 **Opción B: Descargar un video de prueba pequeño**:
 ```bash
@@ -900,7 +910,7 @@ mv bbb_sunflower_1080p_30fps_normal.mp4 test-video.mp4
 # Subir el video
 curl -X POST $API_URL/api/videos/upload \
   -H "Authorization: Bearer $TOKEN" \
-  -F "file=@test-video.mp4" \
+  -F "file=@test-video.mp4;type=video/mp4" \
   -F "title=Video Prueba AWS" \
   -F "description=Prueba de procesamiento en AWS"
 ```
