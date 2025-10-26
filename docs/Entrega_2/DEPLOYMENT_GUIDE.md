@@ -647,7 +647,7 @@ RDS_ENDPOINT="<RDS_ENDPOINT>"                          # Ejemplo: anb-db.xxxxx.u
 RDS_PASSWORD="<TU_RDS_PASSWORD>"                       # El password que configuraste en RDS
 SECRET_KEY=""                                           # Dejar vacío, se generará automáticamente
 GITHUB_REPO="https://github.com/tu-usuario/MISO4204-Desarrollo_Nube.git"
-GITHUB_BRANCH="main"                                    # O feature/Implement-aws-infra si estás en esa rama
+GITHUB_BRANCH="feature/Implement-aws-infra"            # Rama con los cambios para AWS (usa Python 3.11)
 ```
 
 💡 **Tip sobre SECRET_KEY**: El script generará uno automáticamente y lo mostrará al final. **Debes guardarlo** para usarlo en el Worker.
