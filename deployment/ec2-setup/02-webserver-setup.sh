@@ -188,7 +188,7 @@ print_info "Configurando poetry..."
 sudo -u appuser bash -c "cd /home/appuser/MISO4204-Desarrollo_Nube && .venv/bin/poetry config virtualenvs.create false"
 
 print_info "Regenerando poetry.lock..."
-sudo -u appuser bash -c "cd /home/appuser/MISO4204-Desarrollo_Nube && .venv/bin/poetry lock --no-update"
+sudo -u appuser bash -c "cd /home/appuser/MISO4204-Desarrollo_Nube && .venv/bin/poetry lock"
 
 print_info "Instalando dependencias (esto puede tomar varios minutos)..."
 sudo -u appuser bash -c "cd /home/appuser/MISO4204-Desarrollo_Nube && .venv/bin/poetry install --only main"
