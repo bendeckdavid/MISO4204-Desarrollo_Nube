@@ -880,19 +880,32 @@ export TOKEN="<tu_access_token>"
 
 #### 4. Subir Video de Prueba
 
-**Descargar un video de prueba**:
+**Opción A: Usar un video que ya tengas**:
 ```bash
-wget https://sample-videos.com/video123/mp4/720/big_buck_bunny_720p_1mb.mp4
-```
-
-**Subir el video**:
-```bash
+# Si tienes un video en tu máquina local, úsalo directamente
 curl -X POST $API_URL/api/videos/upload \
   -H "Authorization: Bearer $TOKEN" \
-  -F "file=@big_buck_bunny_720p_1mb.mp4" \
+  -F "file=@/ruta/a/tu/video.mp4" \
   -F "title=Video Prueba AWS" \
-  -F "description=Prueba de procesamiento"
+  -F "description=Prueba de procesamiento en AWS"
 ```
+
+**Opción B: Descargar un video de prueba pequeño**:
+```bash
+# Descargar un video de ejemplo (3.7 MB, 30 segundos)
+wget https://download.blender.org/demo/movies/BBB/bbb_sunflower_1080p_30fps_normal.mp4.zip -O test-video.zip
+unzip test-video.zip
+mv bbb_sunflower_1080p_30fps_normal.mp4 test-video.mp4
+
+# Subir el video
+curl -X POST $API_URL/api/videos/upload \
+  -H "Authorization: Bearer $TOKEN" \
+  -F "file=@test-video.mp4" \
+  -F "title=Video Prueba AWS" \
+  -F "description=Prueba de procesamiento en AWS"
+```
+
+💡 **Tip**: El sistema procesará el video (trim a 30s, resize a 720p, watermark). El procesamiento puede tomar 1-2 minutos dependiendo del tamaño del video.
 
 #### 5. Verificar Procesamiento
 
