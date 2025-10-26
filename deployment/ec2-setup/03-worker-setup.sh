@@ -235,13 +235,22 @@ echo ""
 
 # 9. Configurar servicio systemd para Celery
 print_message "[9/9] Configurando servicio systemd para Celery..."
+
+# Crear directorios necesarios con permisos correctos
+sudo mkdir -p /var/run/celery
+sudo chown appuser:appuser /var/run/celery
+
+sudo mkdir -p /var/log/celery
+sudo chown appuser:appuser /var/log/celery
+
+# Crear archivo del servicio
 sudo bash -c 'cat > /etc/systemd/system/celery.service <<EOF
 [Unit]
 Description=Celery Worker for Video Processing
 After=network.target
 
 [Service]
-Type=forking
+Type=simple
 User=appuser
 Group=appuser
 WorkingDirectory=/home/appuser/MISO4204-Desarrollo_Nube
@@ -253,18 +262,13 @@ ExecStart=/home/appuser/MISO4204-Desarrollo_Nube/.venv/bin/celery -A app.worker.
     --max-tasks-per-child=50 \
     --time-limit=600 \
     --soft-time-limit=540 \
-    --logfile=/var/log/celery.log \
-    --pidfile=/var/run/celery.pid
+    --logfile=/var/log/celery/celery.log
 Restart=always
 RestartSec=10
 
 [Install]
 WantedBy=multi-user.target
 EOF'
-
-# Crear archivo de log
-sudo touch /var/log/celery.log
-sudo chown appuser:appuser /var/log/celery.log
 
 print_message "Servicio Celery configurado ✓"
 echo ""
