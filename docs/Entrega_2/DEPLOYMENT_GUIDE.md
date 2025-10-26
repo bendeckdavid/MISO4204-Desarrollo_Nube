@@ -701,7 +701,7 @@ RDS_ENDPOINT="<RDS_ENDPOINT>"
 RDS_PASSWORD="<TU_RDS_PASSWORD>"
 SECRET_KEY="<MISMO_SECRET_KEY_DEL_WEB_SERVER>"  # ⚠️ DEBE SER EL MISMO
 GITHUB_REPO="https://github.com/tu-usuario/MISO4204-Desarrollo_Nube.git"
-GITHUB_BRANCH="main"
+GITHUB_BRANCH="feature/Implement-aws-infra"     # Rama con los cambios para AWS
 ```
 
 **Guardar** (Ctrl+O, Enter, Ctrl+X)
