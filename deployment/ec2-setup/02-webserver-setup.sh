@@ -40,7 +40,7 @@ FILESERVER_PRIVATE_IP=""           # Ejemplo: 172.31.10.99
 RDS_ENDPOINT=""                    # Ejemplo: anb-db.xxxxx.us-east-1.rds.amazonaws.com
 RDS_PASSWORD=""                    # Password del RDS
 SECRET_KEY=""                      # Generar con: openssl rand -hex 32
-GITHUB_REPO="https://github.com/tu-usuario/MISO4204-Desarrollo_Nube.git"
+GITHUB_REPO="https://github.com/bendeckdavid/MISO4204-Desarrollo_Nube.git"
 GITHUB_BRANCH="feature/Implement-aws-infra"  # Rama con cambios para AWS
 
 ################################################################################

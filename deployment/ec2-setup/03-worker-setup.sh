@@ -41,7 +41,7 @@ WEBSERVER_PRIVATE_IP=""            # Ejemplo: 172.31.10.100 (para Redis)
 RDS_ENDPOINT=""                    # Ejemplo: anb-db.xxxxx.us-east-1.rds.amazonaws.com
 RDS_PASSWORD=""                    # Password del RDS
 SECRET_KEY=""                      # MISMO secret key del Web Server
-GITHUB_REPO="https://github.com/tu-usuario/MISO4204-Desarrollo_Nube.git"
+GITHUB_REPO="https://github.com/bendeckdavid/MISO4204-Desarrollo_Nube.git"
 GITHUB_BRANCH="feature/Implement-aws-infra"  # Rama con cambios para AWS
 
 ################################################################################

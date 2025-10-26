@@ -68,11 +68,12 @@ Guía paso a paso para desplegar la aplicación ANB Rising Stars Showcase en AWS
 1. **Clonar/actualizar el repositorio**:
    ```bash
    # Si no lo tienes, clonarlo
-   git clone https://github.com/tu-usuario/MISO4204-Desarrollo_Nube.git
+   git clone https://github.com/bendeckdavid/MISO4204-Desarrollo_Nube.git
    cd MISO4204-Desarrollo_Nube
 
    # Si ya lo tienes, actualizarlo
-   git pull origin main
+   git checkout feature/Implement-aws-infra
+   git pull origin feature/Implement-aws-infra
    ```
 
 2. **Verificar que tienes los scripts**:
@@ -646,7 +647,7 @@ FILESERVER_PRIVATE_IP="<IP_PRIVADA_FILE_SERVER>"      # Ejemplo: 10.0.1.139
 RDS_ENDPOINT="<RDS_ENDPOINT>"                          # Ejemplo: anb-db.xxxxx.us-east-1.rds.amazonaws.com (SIN puerto, SIN postgresql://)
 RDS_PASSWORD="<TU_RDS_PASSWORD>"                       # El password que configuraste en RDS
 SECRET_KEY=""                                           # Dejar vacío, se generará automáticamente
-GITHUB_REPO="https://github.com/tu-usuario/MISO4204-Desarrollo_Nube.git"
+GITHUB_REPO="https://github.com/bendeckdavid/MISO4204-Desarrollo_Nube.git"
 GITHUB_BRANCH="feature/Implement-aws-infra"            # Rama con los cambios para AWS (usa Python 3.11)
 ```
 
@@ -700,7 +701,7 @@ WEBSERVER_PRIVATE_IP="<IP_PRIVADA_WEB_SERVER>"  # Para Redis
 RDS_ENDPOINT="<RDS_ENDPOINT>"
 RDS_PASSWORD="<TU_RDS_PASSWORD>"
 SECRET_KEY="<MISMO_SECRET_KEY_DEL_WEB_SERVER>"  # ⚠️ DEBE SER EL MISMO
-GITHUB_REPO="https://github.com/tu-usuario/MISO4204-Desarrollo_Nube.git"
+GITHUB_REPO="https://github.com/bendeckdavid/MISO4204-Desarrollo_Nube.git"
 GITHUB_BRANCH="feature/Implement-aws-infra"     # Rama con los cambios para AWS
 ```
 
