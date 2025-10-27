@@ -4,6 +4,15 @@ API para la gestión de videos de artistas emergentes con sistema de votación y
 
 ---
 
+## 🎥 Video de Sustentación
+
+**Link del video:** [Ver video en OneDrive](https://uniandes-my.sharepoint.com/:v:/g/personal/o_saraza_uniandes_edu_co/EU4jBLJmGHxBk3xY04vv0J4Bb_FN3VYcN4PVtjharFzehQ?nav=eyJyZWZlcnJhbEluZm8iOnsicmVmZXJyYWxBcHAiOiJPbmVEcml2ZUZvckJ1c2luZXNzIiwicmVmZXJyYWxBcHBQbGF0Zm9ybSI6IldlYiIsInJlZmVycmFsTW9kZSI6InZpZXciLCJyZWZlcnJhbFZpZXciOiJNeUZpbGVzTGlua0NvcHkifX0&e=T4RQfW)
+
+> Video demostrativo del funcionamiento de la aplicación desplegada en AWS, mostrando la arquitectura distribuida, pruebas de carga y análisis de capacidad.
+Recuerde que para ver el video necesita una cuenta uniandes.
+
+---
+
 ## 📢 Entrega 2 - Despliegue en AWS
 
 La aplicación ha sido migrada exitosamente a **Amazon Web Services (AWS)** con una arquitectura distribuida en múltiples instancias EC2 y servicios administrados.
