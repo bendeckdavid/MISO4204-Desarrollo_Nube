@@ -45,9 +45,9 @@ async def upload_video(
         )
 
     new_video_id = models.generate_uuid()
-    # Use app directory which is shared between API and Worker containers
-    video_file_path = f"/app/videos/uploads/{new_video_id}.mp4"
-    processed_file_path = f"/app/videos/processed/{new_video_id}.mp4"
+    # Use media directory (NFS mount point for AWS, volume for local Docker)
+    video_file_path = f"{settings.UPLOAD_BASE_DIR}/{new_video_id}.mp4"
+    processed_file_path = f"{settings.PROCESSED_BASE_DIR}/{new_video_id}.mp4"
 
     # Create database record
     video = models.Video(
@@ -62,9 +62,9 @@ async def upload_video(
     db.commit()
     db.refresh(video)
 
-    # Create the /videos/uploads/ directory if it doesn't exist
-    os.makedirs(os.path.dirname(video_file_path), exist_ok=True)
-    os.makedirs(os.path.dirname(processed_file_path), exist_ok=True)
+    # Create the media directories if they don't exist
+    os.makedirs(settings.UPLOAD_BASE_DIR, exist_ok=True)
+    os.makedirs(settings.PROCESSED_BASE_DIR, exist_ok=True)
 
     # Save the uploaded file to disk
     try:

@@ -579,7 +579,7 @@ pool_recycle = 3600     # Reciclar cada 1 hora
 ### 9.1 GitHub Actions
 
 **Job 1: Tests & Linting**
-- Setup Python 3.13
+- Setup Python 3.12
 - Install dependencies (Poetry)
 - Run flake8 (linting)
 - Run black (formatting check)
@@ -733,7 +733,7 @@ El sistema ha sido sometido a pruebas de carga para validar su capacidad de mane
 ## 10. Tecnologías Utilizadas
 
 ### 10.1 Backend
-- **Python 3.13**
+- **Python 3.12**
 - **FastAPI 0.118.x** - Framework web
 - **Gunicorn** - WSGI HTTP Server (process manager)
 - **Uvicorn** - ASGI server (workers)
@@ -781,7 +781,7 @@ El sistema ha sido sometido a pruebas de carga para validar su capacidad de mane
                    │
 ┌──────────────────▼──────────────────────────┐
 │  Gunicorn + Uvicorn Workers (4 workers)     │
-│  ├─ FastAPI (Python 3.13)                   │
+│  ├─ FastAPI (Python 3.12)                   │
 │  ├─ SQLAlchemy ORM                           │
 │  └─ Pydantic (Validación)                    │
 └───┬────────────────────────────┬────────────┘

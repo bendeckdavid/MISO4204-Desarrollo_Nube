@@ -1,6 +1,42 @@
 # ANB Rising Stars Showcase API
 
-API para la gestión de videos de artistas emergentes con sistema de votación y rankings. Proyecto desarrollado con FastAPI, PostgreSQL, Celery, Redis y Docker para el curso MISO4204 - Desarrollo en la Nube.
+API para la gestión de videos de artistas emergentes con sistema de votación y rankings. Proyecto desarrollado con FastAPI, PostgreSQL, Celery, Redis y desplegado en AWS para el curso MISO4204 - Desarrollo en la Nube.
+
+---
+
+## 📢 Entrega 2 - Despliegue en AWS
+
+La aplicación ha sido migrada exitosamente a **Amazon Web Services (AWS)** con una arquitectura distribuida en múltiples instancias EC2 y servicios administrados.
+
+### Arquitectura Desplegada
+
+```
+Internet → Web Server (EC2) → Redis
+              ↓
+         [VPC 10.0.0.0/16]
+              ↓
+    ┌─────────┼─────────┐
+    ↓         ↓         ↓
+File Server  RDS     Worker (EC2)
+  (NFS)   (Postgres)  (Celery)
+```
+
+**Componentes:**
+- **3 Instancias EC2 t3.small** (2 vCPU, 2 GiB RAM, 50 GiB cada una)
+  - Web Server: FastAPI + Gunicorn + Nginx + Redis
+  - Worker: Celery + FFmpeg para procesamiento de videos
+  - File Server: NFS para almacenamiento compartido
+- **Amazon RDS db.t3.micro**: PostgreSQL 16 (2 vCPU, 1 GiB RAM, 20 GiB)
+- **VPC personalizada**: 10.0.0.0/16 con 2 subnets públicas
+- **Security Groups**: Configurados con principio de mínimo privilegio
+
+### Documentación de Entrega 2
+
+📖 **[Arquitectura AWS](docs/Entrega_2/ARQUITECTURA_AWS.md)** - Diagramas completos, decisiones de diseño, y roadmap de escalabilidad
+
+📖 **[Guía de Despliegue AWS](docs/Entrega_2/AWS_DEPLOYMENT.md)** - Paso a paso para recrear la infraestructura
+
+---
 
 ## 🚀 Características
 
@@ -34,7 +70,7 @@ API para la gestión de videos de artistas emergentes con sistema de votación y
 
 - Docker >= 20.10
 - Docker Compose >= 2.0
-- Python 3.13+ (solo para desarrollo local)
+- Python 3.12+ (solo para desarrollo local)
 
 ### 1. Clonar y Configurar
 
@@ -166,7 +202,21 @@ MISO4204-Desarrollo_Nube/
 
 ## 📚 Documentación
 
-### Documentos Disponibles
+### Entrega 2 - Despliegue en AWS
+
+Documentación completa de la migración a Amazon Web Services con arquitectura distribuida.
+
+| Documento | Descripción |
+|-----------|-------------|
+| **[Arquitectura AWS](docs/Entrega_2/ARQUITECTURA_AWS.md)** | Documentación completa de la arquitectura desplegada en AWS:<br>• Diagramas de despliegue e infraestructura<br>• Diagramas de componentes y flujos<br>• Servicios AWS utilizados (EC2, RDS, VPC, Security Groups)<br>• Decisiones de diseño y justificaciones<br>• Cambios respecto a Entrega 1<br>• Consideraciones de seguridad<br>• Roadmap de escalabilidad (corto, mediano y largo plazo) |
+| **[Guía de Despliegue AWS](docs/Entrega_2/AWS_DEPLOYMENT.md)** | Guía paso a paso para recrear el despliegue en AWS:<br>• Configuración de VPC y networking<br>• Security Groups con mínimo privilegio<br>• Creación de instancias EC2 (Web Server, Worker, File Server)<br>• Configuración de Amazon RDS PostgreSQL<br>• Scripts de automatización para cada componente<br>• Configuración de NFS para almacenamiento compartido<br>• Troubleshooting y solución de problemas comunes |
+
+**Scripts de Despliegue Automatizado:**
+- [01-fileserver-setup.sh](deployment/ec2-setup/01-fileserver-setup.sh) - Configuración de NFS Server
+- [02-webserver-setup.sh](deployment/ec2-setup/02-webserver-setup.sh) - Configuración de FastAPI + Nginx + Redis
+- [03-worker-setup.sh](deployment/ec2-setup/03-worker-setup.sh) - Configuración de Celery Worker + FFmpeg
+
+### Entrega 1 - Desarrollo Local
 
 | Documento | Ubicación | Descripción |
 |-----------|-----------|-------------|
@@ -174,10 +224,10 @@ MISO4204-Desarrollo_Nube/
 | **Decisiones de Diseño** | [docs/Entrega_1/decisiones_diseno.md](docs/Entrega_1/decisiones_diseno.md) | Decisiones arquitectónicas y justificaciones |
 | **Modelo de Datos** | [docs/Entrega_1/modelo_datos.md](docs/Entrega_1/modelo_datos.md) | Modelo relacional y relaciones entre entidades |
 | **Reporte SonarQube** | [docs/Entrega_1/reporte_sonarqube.md](docs/Entrega_1/reporte_sonarqube.md) | Análisis de calidad de código, cobertura, seguridad y mantenibilidad |
-| **Pruebas de Carga** | [docs/Entrega_1/pruebas_carga/reporte.md](docs/Entrega_1/pruebas_carga/reporte.md) | Resultados y análisis de pruebas de rendimiento |
+| **Pruebas de Carga** | [docs/Entrega_1/pruebas_carga/reporte.md](docs/Entrega_1/pruebas_carga/reporte.md) | Resultados y análisis de pruebas de rendimiento local |
 | **Colección de Postman** | [collections/README.md](collections/README.md) | Guía completa para usar la colección con Postman y Newman |
 
-### Diagramas
+### Diagramas (Entrega 1)
 
 Todos los diagramas están disponibles como imágenes en [`docs/Entrega_1/images/`](docs/Entrega_1/images/):
 
@@ -761,7 +811,7 @@ Pipeline automatizado con GitHub Actions que se ejecuta en cada push a `main` o 
 ### Etapas
 
 1. **Tests y Linting**
-   - Setup de Python 3.13 y Poetry
+   - Setup de Python 3.12 y Poetry
    - Ejecución de flake8, black y mypy
    - Ejecución de 40 tests con pytest
    - Generación de reporte de cobertura

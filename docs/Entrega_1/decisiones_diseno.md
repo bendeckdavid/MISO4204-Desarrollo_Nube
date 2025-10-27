@@ -371,7 +371,7 @@ services:
 **Pipeline**:
 ```yaml
 Job 1: Test & Lint
-  - Setup Python 3.13
+  - Setup Python 3.12
   - Install Poetry dependencies
   - Run flake8 (linting)
   - Run black (formatting)
