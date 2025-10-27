@@ -36,8 +36,6 @@ File Server  RDS     Worker (EC2)
 
 📖 **[Guía de Despliegue AWS](docs/Entrega_2/AWS_DEPLOYMENT.md)** - Paso a paso para recrear la infraestructura
 
-📖 **[Análisis de Capacidad](capacity-planning/pruebas_de_carga_entrega2.md)** - Template para pruebas de carga y métricas
-
 ---
 
 ## 🚀 Características
@@ -212,7 +210,6 @@ Documentación completa de la migración a Amazon Web Services con arquitectura 
 |-----------|-------------|
 | **[Arquitectura AWS](docs/Entrega_2/ARQUITECTURA_AWS.md)** | Documentación completa de la arquitectura desplegada en AWS:<br>• Diagramas de despliegue e infraestructura<br>• Diagramas de componentes y flujos<br>• Servicios AWS utilizados (EC2, RDS, VPC, Security Groups)<br>• Decisiones de diseño y justificaciones<br>• Cambios respecto a Entrega 1<br>• Consideraciones de seguridad<br>• Roadmap de escalabilidad (corto, mediano y largo plazo) |
 | **[Guía de Despliegue AWS](docs/Entrega_2/AWS_DEPLOYMENT.md)** | Guía paso a paso para recrear el despliegue en AWS:<br>• Configuración de VPC y networking<br>• Security Groups con mínimo privilegio<br>• Creación de instancias EC2 (Web Server, Worker, File Server)<br>• Configuración de Amazon RDS PostgreSQL<br>• Scripts de automatización para cada componente<br>• Configuración de NFS para almacenamiento compartido<br>• Troubleshooting y solución de problemas comunes |
-| **[Análisis de Capacidad](capacity-planning/pruebas_de_carga_entrega2.md)** | Template para documentar pruebas de carga y análisis de rendimiento:<br>• Escenario 1: Pruebas de carga de lecturas<br>• Escenario 2: Upload y procesamiento concurrente<br>• Métricas de performance (throughput, latencia, recursos)<br>• Scripts de K6 para pruebas de carga<br>• Análisis comparativo con Entrega 1<br>• Identificación de cuellos de botella<br>• Recomendaciones de escalabilidad |
 
 **Scripts de Despliegue Automatizado:**
 - [01-fileserver-setup.sh](deployment/ec2-setup/01-fileserver-setup.sh) - Configuración de NFS Server
