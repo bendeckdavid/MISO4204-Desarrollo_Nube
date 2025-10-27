@@ -21,7 +21,7 @@
 
 ## Arquitectura de Despliegue
 
-### Diagrama de Despliegue
+### Despliegue
 
 ```
                                     ┌─────────────────┐
@@ -133,142 +133,15 @@
 
 ### Diagrama de Componentes
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        Web Server (EC2)                         │
-│                                                                 │
-│  ┌────────────┐    ┌─────────────────────────────────────┐    │
-│  │   Nginx    │───▶│         Gunicorn                    │    │
-│  │  (Port 80) │    │  ┌───────────────────────────────┐  │    │
-│  └────────────┘    │  │  Uvicorn Worker 1             │  │    │
-│         │          │  │  ┌─────────────────────────┐  │  │    │
-│         │          │  │  │   FastAPI Application   │  │  │    │
-│         │          │  │  │  ┌──────────────────┐   │  │  │    │
-│         │          │  │  │  │ API Routes       │   │  │  │    │
-│         │          │  │  │  │ - /api/auth/*    │   │  │  │    │
-│         │          │  │  │  │ - /api/videos/*  │   │  │  │    │
-│         │          │  │  │  │ - /api/public/*  │   │  │  │    │
-│         │          │  │  │  └──────────────────┘   │  │  │    │
-│         │          │  │  │  ┌──────────────────┐   │  │  │    │
-│         │          │  │  │  │ Security (JWT)   │   │  │  │    │
-│         │          │  │  │  └──────────────────┘   │  │  │    │
-│         │          │  │  │  ┌──────────────────┐   │  │  │    │
-│         │          │  │  │  │ SQLAlchemy ORM   │   │  │  │    │
-│         │          │  │  │  └──────────────────┘   │  │  │    │
-│         │          │  │  └─────────────────────────┘  │  │    │
-│         │          │  └───────────────────────────────┘  │    │
-│         │          │  │  Uvicorn Worker 2-4 (similar)   │    │
-│         │          │  └─────────────────────────────────┘    │
-│         │          └─────────────────────────────────────┘    │
-│         │                         │           │                │
-│         │                         │           │                │
-│  ┌──────▼──────┐         ┌────────▼────┐  ┌──▼──────────┐    │
-│  │   Redis     │◀────────│ Celery Tasks│  │  NFS Mount  │    │
-│  │ (Port 6379) │         │   Producer  │  │  /app/media │    │
-│  └─────────────┘         └─────────────┘  └─────────────┘    │
-│         │                                         │            │
-└─────────┼─────────────────────────────────────────┼────────────┘
-          │                                         │
-          │                                         │
-          │         ┌───────────────────┐           │
-          └────────▶│   File Server     │◀──────────┘
-                    │  (NFS Server)     │
-                    │                   │
-          ┌────────▶│  /shared/media/   │◀──────────┐
-          │         │    ├─ uploads/    │           │
-          │         │    └─ processed/  │           │
-          │         └───────────────────┘           │
-          │                                         │
-          │                                         │
-┌─────────┼─────────────────────────────────────────┼────────────┐
-│         │              Worker (EC2)               │            │
-│         │                                         │            │
-│  ┌──────▼────────┐                        ┌───────▼──────┐    │
-│  │  Celery       │                        │  NFS Mount   │    │
-│  │  Worker       │                        │  /app/media  │    │
-│  │               │                        └──────────────┘    │
-│  │  ┌─────────┐  │                                            │
-│  │  │ Task    │  │         ┌─────────────────┐                │
-│  │  │ Consumer│  │────────▶│     FFmpeg      │                │
-│  │  └─────────┘  │         │ Video Processing│                │
-│  │               │         │ - Trim (30s)    │                │
-│  │  Concurrency: │         │ - Resize (720p) │                │
-│  │  2 workers    │         │ - Watermark     │                │
-│  └───────────────┘         └─────────────────┘                │
-│         │                                                      │
-└─────────┼──────────────────────────────────────────────────────┘
-          │
-          │
-    ┌─────▼──────┐
-    │  Amazon    │
-    │    RDS     │
-    │ PostgreSQL │
-    │            │
-    │ ┌────────┐ │
-    │ │ users  │ │
-    │ ├────────┤ │
-    │ │ videos │ │
-    │ ├────────┤ │
-    │ │ votes  │ │
-    │ └────────┘ │
-    └────────────┘
-```
+![Diagrama de Componentes AWS](images/diagrama_componentes.png)
+
+*Diagrama que muestra la arquitectura de componentes completa desplegada en AWS. Se visualizan las tres instancias EC2 (Web Server, Worker, File Server), Amazon RDS, y la interacción entre todos los servicios dentro de la VPC.*
 
 ### Flujo de Procesamiento de Videos
 
-```
-Usuario                Web Server          Redis/Celery        Worker          NFS/File Server
-  │                        │                    │                │                    │
-  │  1. POST /videos/upload│                    │                │                    │
-  ├───────────────────────▶│                    │                │                    │
-  │                        │                    │                │                    │
-  │                        │ 2. Guardar archivo │                │                    │
-  │                        ├────────────────────┴────────────────┴───────────────────▶│
-  │                        │                    │                │        uploads/    │
-  │                        │◀───────────────────┴────────────────┴─────────────────────│
-  │                        │                    │                │                    │
-  │                        │ 3. Crear registro  │                │                    │
-  │                        │     en DB          │                │                    │
-  │                        │ (status=pending)   │                │                    │
-  │                        │                    │                │                    │
-  │                        │ 4. Encolar tarea   │                │                    │
-  │                        ├───────────────────▶│                │                    │
-  │                        │  process_video()   │                │                    │
-  │                        │                    │                │                    │
-  │  5. Response 202       │                    │                │                    │
-  │◀───────────────────────│                    │                │                    │
-  │  {id, status:pending}  │                    │                │                    │
-  │                        │                    │                │                    │
-  │                        │                    │ 6. Dequeue     │                    │
-  │                        │                    ├───────────────▶│                    │
-  │                        │                    │                │                    │
-  │                        │                    │                │ 7. Leer archivo    │
-  │                        │                    │                ├───────────────────▶│
-  │                        │                    │                │    uploads/        │
-  │                        │                    │                │◀───────────────────│
-  │                        │                    │                │                    │
-  │                        │                    │                │ 8. FFmpeg:         │
-  │                        │                    │                │   - Trim 30s       │
-  │                        │                    │                │   - Resize 720p    │
-  │                        │                    │                │   - Watermark      │
-  │                        │                    │                │                    │
-  │                        │                    │                │ 9. Guardar         │
-  │                        │                    │                │    procesado       │
-  │                        │                    │                ├───────────────────▶│
-  │                        │                    │                │   processed/       │
-  │                        │                    │                │                    │
-  │                        │ 10. Actualizar DB  │                │                    │
-  │                        │◀────────────────────────────────────│                    │
-  │                        │  (status=completed)│                │                    │
-  │                        │                    │                │                    │
-  │  11. GET /videos/{id}  │                    │                │                    │
-  ├───────────────────────▶│                    │                │                    │
-  │                        │                    │                │                    │
-  │  12. Response 200      │                    │                │                    │
-  │◀───────────────────────│                    │                │                    │
-  │  {status:completed,    │                    │                │                    │
-  │   processed_url}       │                    │                │                    │
-```
+![Flujo de Procesamiento de Videos](images/flujo_procesamiento.png)
+
+*Diagrama de secuencia que muestra el flujo completo desde el upload de un video hasta su procesamiento y consulta de estado. El proceso incluye tres fases principales: carga de archivo, procesamiento asíncrono con Celery, y consulta del estado final.*
 
 ---
 
