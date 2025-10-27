@@ -6,22 +6,37 @@ API para la gestión de videos de artistas emergentes con sistema de votación y
 
 ## 📢 Entrega 2 - Despliegue en AWS
 
-La aplicación ha sido desplegada exitosamente en **Amazon Web Services (AWS)** con una arquitectura distribuida de 3 instancias EC2 más Amazon RDS.
+La aplicación ha sido migrada exitosamente a **Amazon Web Services (AWS)** con una arquitectura distribuida en múltiples instancias EC2 y servicios administrados.
 
-### Infraestructura AWS
+### Arquitectura Desplegada
 
-- **3 Instancias EC2 t3.small**: Web Server, Worker, File Server (NFS)
-- **Amazon RDS db.t3.micro**: PostgreSQL 16
-- **VPC personalizada** con Security Groups configurados
-- **Almacenamiento**: EBS gp3 (50 GiB por instancia) + RDS gp3 (20 GiB)
+```
+Internet → Web Server (EC2) → Redis
+              ↓
+         [VPC 10.0.0.0/16]
+              ↓
+    ┌─────────┼─────────┐
+    ↓         ↓         ↓
+File Server  RDS     Worker (EC2)
+  (NFS)   (Postgres)  (Celery)
+```
 
-### Documentación Completa
+**Componentes:**
+- **3 Instancias EC2 t3.small** (2 vCPU, 2 GiB RAM, 50 GiB cada una)
+  - Web Server: FastAPI + Gunicorn + Nginx + Redis
+  - Worker: Celery + FFmpeg para procesamiento de videos
+  - File Server: NFS para almacenamiento compartido
+- **Amazon RDS db.t3.micro**: PostgreSQL 16 (2 vCPU, 1 GiB RAM, 20 GiB)
+- **VPC personalizada**: 10.0.0.0/16 con 2 subnets públicas
+- **Security Groups**: Configurados con principio de mínimo privilegio
 
-📖 **[Ver Documentación de Entrega 2](docs/Entrega_2/README.md)**
+### Documentación de Entrega 2
 
-- [Arquitectura AWS](docs/Entrega_2/ARQUITECTURA_AWS.md) - Diagramas y decisiones de diseño
-- [Guía de Despliegue](docs/Entrega_2/AWS_DEPLOYMENT.md) - Paso a paso completo
-- [Análisis de Capacidad](capacity-planning/pruebas_de_carga_entrega2.md) - Pruebas de carga
+📖 **[Arquitectura AWS](docs/Entrega_2/ARQUITECTURA_AWS.md)** - Diagramas completos, decisiones de diseño, y roadmap de escalabilidad
+
+📖 **[Guía de Despliegue AWS](docs/Entrega_2/AWS_DEPLOYMENT.md)** - Paso a paso para recrear la infraestructura
+
+📖 **[Análisis de Capacidad](capacity-planning/pruebas_de_carga_entrega2.md)** - Template para pruebas de carga y métricas
 
 ---
 
@@ -189,14 +204,20 @@ MISO4204-Desarrollo_Nube/
 
 ## 📚 Documentación
 
-### Entrega 2 - Despliegue en AWS (Actual)
+### Entrega 2 - Despliegue en AWS
+
+Documentación completa de la migración a Amazon Web Services con arquitectura distribuida.
 
 | Documento | Descripción |
 |-----------|-------------|
-| **[Índice Entrega 2](docs/Entrega_2/README.md)** | Punto de entrada a toda la documentación de AWS |
-| **[Arquitectura AWS](docs/Entrega_2/ARQUITECTURA_AWS.md)** | Arquitectura completa del despliegue en AWS:<br>• Diagramas de infraestructura y componentes<br>• Servicios de AWS utilizados (EC2, RDS, VPC)<br>• Cambios respecto a Entrega 1<br>• Decisiones de diseño y trade-offs<br>• Roadmap de escalabilidad |
-| **[Guía de Despliegue AWS](docs/Entrega_2/AWS_DEPLOYMENT.md)** | Guía paso a paso para desplegar en AWS:<br>• Configuración de VPC y Security Groups<br>• Creación y configuración de EC2 (Web, Worker, NFS)<br>• Configuración de Amazon RDS PostgreSQL<br>• Scripts de automatización<br>• Troubleshooting |
-| **[Análisis de Capacidad](capacity-planning/pruebas_de_carga_entrega2.md)** | Pruebas de carga y análisis de rendimiento:<br>• Escenario 1: Carga de lecturas<br>• Escenario 2: Upload y procesamiento<br>• Métricas de performance (throughput, latencia)<br>• Cuellos de botella identificados<br>• Recomendaciones de escalabilidad |
+| **[Arquitectura AWS](docs/Entrega_2/ARQUITECTURA_AWS.md)** | Documentación completa de la arquitectura desplegada en AWS:<br>• Diagramas de despliegue e infraestructura<br>• Diagramas de componentes y flujos<br>• Servicios AWS utilizados (EC2, RDS, VPC, Security Groups)<br>• Decisiones de diseño y justificaciones<br>• Cambios respecto a Entrega 1<br>• Consideraciones de seguridad<br>• Roadmap de escalabilidad (corto, mediano y largo plazo) |
+| **[Guía de Despliegue AWS](docs/Entrega_2/AWS_DEPLOYMENT.md)** | Guía paso a paso para recrear el despliegue en AWS:<br>• Configuración de VPC y networking<br>• Security Groups con mínimo privilegio<br>• Creación de instancias EC2 (Web Server, Worker, File Server)<br>• Configuración de Amazon RDS PostgreSQL<br>• Scripts de automatización para cada componente<br>• Configuración de NFS para almacenamiento compartido<br>• Troubleshooting y solución de problemas comunes |
+| **[Análisis de Capacidad](capacity-planning/pruebas_de_carga_entrega2.md)** | Template para documentar pruebas de carga y análisis de rendimiento:<br>• Escenario 1: Pruebas de carga de lecturas<br>• Escenario 2: Upload y procesamiento concurrente<br>• Métricas de performance (throughput, latencia, recursos)<br>• Scripts de K6 para pruebas de carga<br>• Análisis comparativo con Entrega 1<br>• Identificación de cuellos de botella<br>• Recomendaciones de escalabilidad |
+
+**Scripts de Despliegue Automatizado:**
+- [01-fileserver-setup.sh](deployment/ec2-setup/01-fileserver-setup.sh) - Configuración de NFS Server
+- [02-webserver-setup.sh](deployment/ec2-setup/02-webserver-setup.sh) - Configuración de FastAPI + Nginx + Redis
+- [03-worker-setup.sh](deployment/ec2-setup/03-worker-setup.sh) - Configuración de Celery Worker + FFmpeg
 
 ### Entrega 1 - Desarrollo Local
 
@@ -207,15 +228,9 @@ MISO4204-Desarrollo_Nube/
 | **Modelo de Datos** | [docs/Entrega_1/modelo_datos.md](docs/Entrega_1/modelo_datos.md) | Modelo relacional y relaciones entre entidades |
 | **Reporte SonarQube** | [docs/Entrega_1/reporte_sonarqube.md](docs/Entrega_1/reporte_sonarqube.md) | Análisis de calidad de código, cobertura, seguridad y mantenibilidad |
 | **Pruebas de Carga** | [docs/Entrega_1/pruebas_carga/reporte.md](docs/Entrega_1/pruebas_carga/reporte.md) | Resultados y análisis de pruebas de rendimiento local |
-
-### Recursos Adicionales
-
-| Documento | Ubicación | Descripción |
-|-----------|-----------|-------------|
 | **Colección de Postman** | [collections/README.md](collections/README.md) | Guía completa para usar la colección con Postman y Newman |
-| **Scripts de Despliegue** | [deployment/ec2-setup/](deployment/ec2-setup/) | Scripts automatizados para configurar EC2 en AWS |
 
-### Diagramas
+### Diagramas (Entrega 1)
 
 Todos los diagramas están disponibles como imágenes en [`docs/Entrega_1/images/`](docs/Entrega_1/images/):
 

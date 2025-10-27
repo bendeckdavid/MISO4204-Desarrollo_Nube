@@ -1,20 +1,14 @@
 # Arquitectura de la Aplicación en AWS
 
 ## Tabla de Contenidos
-- [Resumen Ejecutivo](#resumen-ejecutivo)
 - [Arquitectura de Despliegue](#arquitectura-de-despliegue)
 - [Arquitectura de Componentes](#arquitectura-de-componentes)
 - [Servicios de AWS Utilizados](#servicios-de-aws-utilizados)
 - [Cambios Respecto a Entrega 1](#cambios-respecto-a-entrega-1)
 - [Decisiones de Diseño](#decisiones-de-diseño)
 - [Consideraciones de Seguridad](#consideraciones-de-seguridad)
-- [Escalabilidad y Mejoras Futuras](#escalabilidad-y-mejoras-futuras)
 
 ---
-
-## Resumen Ejecutivo
-
-La aplicación **ANB Rising Stars Showcase** ha sido migrada exitosamente desde un entorno de contenedores Docker local a una arquitectura de nube pública en Amazon Web Services (AWS). Esta migración busca aprovechar la infraestructura escalable y confiable de AWS para proporcionar mayor disponibilidad, rendimiento y capacidad de crecimiento.
 
 ### Características Principales de la Arquitectura:
 - **Desacoplamiento de componentes**: Cada servicio se ejecuta en su propia instancia EC2, permitiendo escalado independiente
@@ -368,7 +362,6 @@ Usuario                Web Server          Redis/Celery        Worker          N
 | **Almacenamiento** | Volumen Docker local | NFS en EC2 dedicado |
 | **Escalabilidad** | Limitada por hardware local | Horizontal y vertical en cloud |
 | **Acceso** | localhost:8080 | IP pública + DNS (potencial) |
-| **Costo** | $0 (recursos locales) | ~$50-80/mes (desarrollo) |
 
 ### Cambios en el Código
 
@@ -468,45 +461,7 @@ python = "^3.11"  # Compatible con Ubuntu 22.04 LTS
 - **Troubleshooting**: Más fácil depurar problemas cuando están aislados
 - **Cumplimiento de requisitos**: El proyecto específicamente requiere 3 instancias separadas
 
-**Alternativas consideradas:**
-- ❌ Todo en 1 instancia: Más barato pero viola requisitos y limita escalabilidad
-- ❌ Web + Worker juntos: Problemas de recursos compartidos
-
-### 2. ¿Por qué NFS en EC2 en lugar de Amazon EFS?
-
-**Decisión**: Implementar NFS en una instancia EC2 dedicada
-
-**Razones:**
-- **Requisito del proyecto**: Explícitamente indica "No utilice el servicio Amazon EFS"
-- **Control total**: Administración completa de permisos, exports y configuración
-- **Costo**: EC2 t3.small es más económico que EFS para volúmenes pequeños
-- **Aprendizaje**: Mayor comprensión de conceptos de networking y almacenamiento
-
-**Trade-offs:**
-- ✅ Más barato para workloads pequeños
-- ✅ Control total de configuración
-- ❌ Single point of failure (no es distribuido como EFS)
-- ❌ Requiere administración manual
-
-### 3. ¿Por qué Redis en Web Server en lugar de ElastiCache?
-
-**Decisión**: Instalar Redis en la misma instancia EC2 del Web Server
-
-**Razones:**
-- **Simplicidad**: Una dependencia menos que configurar
-- **Costo**: ElastiCache tiene costo adicional (~$15-20/mes para cache.t3.micro)
-- **Baja latencia**: Redis y FastAPI en la misma instancia = latencia mínima
-- **Workload pequeño**: El volumen de tareas no justifica un broker dedicado
-
-**Trade-offs:**
-- ✅ Sin costo adicional
-- ✅ Latencia ultra-baja
-- ❌ Comparte recursos con la API
-- ❌ Si el Web Server se cae, se pierden las tareas encoladas
-
-**Mejora futura**: Migrar a ElastiCache cuando el volumen de videos aumente significativamente
-
-### 4. ¿Por qué db.t3.micro para RDS?
+### 2. ¿Por qué db.t3.micro para RDS?
 
 **Decisión**: Usar la instancia RDS más pequeña disponible
 
@@ -524,7 +479,7 @@ Writes: Bajos (uploads, votos ocasionales)
 Database size: < 5 GB en primeros 6 meses
 ```
 
-### 5. ¿Por qué Single-AZ para RDS?
+### 3. ¿Por qué Single-AZ para RDS?
 
 **Decisión**: No usar Multi-AZ deployment
 
@@ -532,13 +487,12 @@ Database size: < 5 GB en primeros 6 meses
 - **Entorno de desarrollo**: No es producción crítica todavía
 - **Costo**: Multi-AZ duplica el costo (~$30/mes adicionales)
 - **Downtime aceptable**: Para pruebas, 5-10 min de downtime es tolerable
-- **Plan de migración**: Se activará Multi-AZ antes de ir a producción
 
 **Riesgos asumidos:**
 - ⚠️ RTO (Recovery Time Objective): ~10-15 minutos en caso de fallo de AZ
 - ⚠️ RPO (Recovery Point Objective): 0 (sin backups automáticos habilitados)
 
-### 6. ¿Por qué Python 3.11 en lugar de 3.12?
+### 4. ¿Por qué Python 3.11 en lugar de 3.12?
 
 **Decisión**: Cambiar la versión mínima de Python de 3.12 a 3.11
 
@@ -548,7 +502,7 @@ Database size: < 5 GB en primeros 6 meses
 - **Compatibilidad**: Todas las dependencias son compatibles con 3.11
 - **Evitar compilación**: No es necesario compilar Python desde source
 
-### 7. ¿Por qué systemd en lugar de supervisord?
+### 5. ¿Por qué systemd en lugar de supervisord?
 
 **Decisión**: Usar systemd para gestionar servicios
 
@@ -608,17 +562,6 @@ Outbound:
 
 ### 2. Gestión de Credenciales
 
-#### Variables de Entorno
-Las credenciales sensibles NUNCA se hardcodean:
-
-```bash
-# ❌ MAL
-DATABASE_URL=postgresql://user:password@host/db
-
-# ✅ BIEN
-DATABASE_URL=${RDS_ENDPOINT}
-```
-
 #### Archivos .env
 ```bash
 # En cada instancia EC2
@@ -627,14 +570,6 @@ DATABASE_URL=${RDS_ENDPOINT}
 # Permisos restrictivos
 chmod 600 .env
 chown appuser:appuser .env
-```
-
-#### Secretos NO en Git
-```gitignore
-.env
-.env.*
-*.pem
-*.key
 ```
 
 ### 3. Acceso SSH
@@ -709,193 +644,6 @@ MaxRetentionSec=1month
 
 ---
 
-## Escalabilidad y Mejoras Futuras
-
-### Limitaciones Actuales
-
-1. **Single Point of Failure (SPOF)**
-   - Web Server único: Si cae, toda la API es inaccesible
-   - File Server único: Si cae, no se pueden subir/procesar videos
-   - Redis en Web Server: Si se reinicia, se pierden tareas encoladas
-
-2. **Capacidad Limitada**
-   - 1 Web Server: ~50-100 usuarios concurrentes
-   - 1 Worker: ~4-6 videos en paralelo (con concurrency=2)
-   - db.t3.micro: ~50 conexiones simultáneas
-
-3. **Sin Alta Disponibilidad**
-   - RDS Single-AZ: ~10-15 min de downtime en fallo de zona
-   - Sin backups automáticos: Pérdida de datos en fallo catastrófico
-
-### Roadmap de Escalabilidad
-
-#### Fase 1: Escalado Horizontal Básico (Corto Plazo)
-
-```
-                    ┌─────────────────┐
-                    │  Elastic Load   │
-                    │    Balancer     │
-                    └────────┬────────┘
-                             │
-              ┌──────────────┼──────────────┐
-              │              │              │
-              ▼              ▼              ▼
-     ┌────────────┐  ┌────────────┐  ┌────────────┐
-     │Web Server 1│  │Web Server 2│  │Web Server 3│
-     └────────────┘  └────────────┘  └────────────┘
-```
-
-**Cambios:**
-1. Agregar **Application Load Balancer** (ALB)
-   - Distribuir tráfico entre múltiples Web Servers
-   - Health checks automáticos
-   - Sticky sessions para WebSocket (futuro)
-
-2. Separar **Redis a instancia dedicada** o **ElastiCache**
-   - Evitar SPOF del broker
-   - Mejor rendimiento
-
-3. Agregar **2-3 Workers adicionales**
-   - Procesar más videos en paralelo
-   - Reducir tiempo de espera de usuarios
-
-**Costo estimado:** +$80-120/mes
-
-#### Fase 2: Alta Disponibilidad (Mediano Plazo)
-
-```
-        ┌───────────────────────────────────┐
-        │         CloudFront CDN            │
-        │  (Distribución global de videos)  │
-        └──────────────┬────────────────────┘
-                       │
-        ┌──────────────▼────────────────┐
-        │    Application Load Balancer  │
-        │       (Multi-AZ)              │
-        └──────────────┬────────────────┘
-                       │
-         ┌─────────────┼─────────────┐
-         │                           │
-    ┌────▼────┐                 ┌────▼────┐
-    │  AZ 1   │                 │  AZ 2   │
-    │         │                 │         │
-    │ Web x2  │                 │ Web x2  │
-    │ Worker  │                 │ Worker  │
-    └─────────┘                 └─────────┘
-         │                           │
-         └────────────┬──────────────┘
-                      │
-              ┌───────▼────────┐
-              │   RDS Multi-AZ │
-              │   Primary + DR │
-              └────────────────┘
-```
-
-**Cambios:**
-1. **RDS Multi-AZ**
-   - Sincronización automática a AZ secundaria
-   - Failover automático en < 2 minutos
-   - RTO: ~2 min, RPO: ~0 segundos
-
-2. **Auto Scaling Groups**
-   - Escalar Web Servers automáticamente según CPU/memoria
-   - Min: 2, Max: 6, Desired: 2
-
-3. **Amazon S3 + CloudFront**
-   - Migrar videos procesados a S3
-   - Servir videos desde CDN global
-   - Reducir carga en File Server
-
-4. **ElastiCache Redis Cluster**
-   - Modo cluster con réplicas
-   - Automatic failover
-
-**Costo estimado:** +$200-300/mes
-
-#### Fase 3: Arquitectura Global (Largo Plazo)
-
-```
-                    ┌──────────────────┐
-                    │   Route 53 DNS   │
-                    │  Geolocation     │
-                    │  Routing         │
-                    └────────┬─────────┘
-                             │
-              ┌──────────────┼──────────────┐
-              │                             │
-              ▼                             ▼
-    ┌──────────────────┐          ┌──────────────────┐
-    │  US-EAST (Main)  │          │  SA-EAST (BR)    │
-    │                  │          │                  │
-    │  ALB + ASG       │          │  ALB + ASG       │
-    │  RDS Multi-AZ    │          │  RDS Read Replica│
-    │  ElastiCache     │          │  ElastiCache     │
-    └──────────────────┘          └──────────────────┘
-              │                             │
-              └──────────────┬──────────────┘
-                             │
-                    ┌────────▼────────┐
-                    │   S3 Global     │
-                    │ Cross-Region    │
-                    │  Replication    │
-                    └─────────────────┘
-```
-
-**Cambios:**
-1. **Multi-Region Deployment**
-   - Región principal: us-east-1 (Virginia)
-   - Región secundaria: sa-east-1 (São Paulo)
-   - Latencia reducida para usuarios de LATAM
-
-2. **RDS Read Replicas**
-   - Lectura local en cada región
-   - Escrituras centralizadas en us-east-1
-
-3. **S3 Cross-Region Replication**
-   - Videos disponibles en todas las regiones
-   - Resiliencia ante desastre regional
-
-4. **Kubernetes (EKS)**
-   - Migrar de instancias EC2 a contenedores orquestados
-   - Deployment más ágil
-   - Mejor utilización de recursos
-
-**Costo estimado:** +$500-800/mes
-
-### Tabla Comparativa de Fases
-
-| Aspecto | Actual | Fase 1 | Fase 2 | Fase 3 |
-|---------|--------|--------|--------|--------|
-| **Disponibilidad** | 95% | 98% | 99.5% | 99.9% |
-| **RTO** | Manual (~1h) | 15 min | 2 min | < 1 min |
-| **RPO** | No backups | 5 min | 0 | 0 |
-| **Usuarios concurrentes** | 50-100 | 200-300 | 500-1000 | 5000+ |
-| **Videos/hora** | ~10-20 | ~50-100 | ~200-500 | ~1000+ |
-| **Latencia (p95)** | 200ms | 150ms | 100ms | 50ms |
-| **Costo mensual** | $60 | $160 | $360 | $860 |
-
-### Métricas para Decidir Escalar
-
-#### Cuándo aplicar Fase 1:
-- CPU de Web Server > 70% sostenido por > 1 hora
-- Cola de Celery > 20 tareas pendientes por > 30 minutos
-- Usuarios concurrentes > 80 de forma regular
-- Tiempo de respuesta p95 > 500ms
-
-#### Cuándo aplicar Fase 2:
-- Downtime histórico > 1 hora/mes
-- Usuarios concurrentes > 250
-- Requerimiento contractual de SLA 99%+
-- Videos procesados > 500/día
-
-#### Cuándo aplicar Fase 3:
-- Usuarios en múltiples países con alta latencia
-- Requerimiento de disaster recovery regional
-- Volumen > 10,000 videos/mes
-- Revenue justifica la inversión
-
----
-
 ## Conclusiones
 
 ### Logros de la Migración
@@ -914,17 +662,8 @@ MaxRetentionSec=1month
 4. **Variables de entorno son clave**: Facilitan la configuración entre entornos (dev/staging/prod)
 5. **Testing incremental**: Verificar cada componente antes de pasar al siguiente ahorra tiempo
 
-### Próximos Pasos
-
-1. **Implementar monitoring**: CloudWatch para métricas de EC2, RDS y application logs
-2. **Configurar alarmas**: Notificaciones de CPU, memoria, disco, errores de aplicación
-3. **Backups automáticos**: Habilitar en RDS y snapshots de EBS
-4. **Pruebas de carga**: Validar límites de capacidad actuales
-5. **Documentar runbooks**: Procedimientos para incidentes comunes
-6. **CI/CD pipeline**: GitHub Actions para deploy automático a AWS
-
 ---
 
 **Documento actualizado**: 2025-10-26
-**Versión**: 2.0
-**Autor**: Equipo ANB Rising Stars
+**Versión**: 1.0
+**Autor**: Grupo 12

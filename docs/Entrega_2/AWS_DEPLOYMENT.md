@@ -50,14 +50,11 @@ Guía completa para el despliegue de la aplicación ANB Rising Stars Showcase en
 - **Amazon RDS**: PostgreSQL 16
 - **NFS**: Sistema de archivos compartido
 
-**Tiempo total estimado: 60-90 minutos**
-
 ---
 
 ## Prerrequisitos
 
 ### En tu máquina local
-- Cuenta de AWS con créditos educativos
 - SSH client instalado
 - Git con el repositorio actualizado
 
@@ -72,8 +69,8 @@ Guía completa para el despliegue de la aplicación ANB Rising Stars Showcase en
    cd MISO4204-Desarrollo_Nube
 
    # Si ya lo tienes, actualizarlo
-   git checkout feature/Implement-aws-infra
-   git pull origin feature/Implement-aws-infra
+   git checkout main
+   git pull origin main
    ```
 
 2. **Verificar que tienes los scripts**:
@@ -93,20 +90,15 @@ Guía completa para el despliegue de la aplicación ANB Rising Stars Showcase en
    📝 **Guarda esta ruta**, la usarás para los comandos `scp`
 
 ### Preparar antes de empezar AWS
+`
 
-1. **Obtener tu IP pública** (para SSH):
-   ```bash
-   curl https://checkip.amazonaws.com
-   ```
-   Anota tu IP: `_______________`
-
-2. **Generar SECRET_KEY**:
+1. **Generar SECRET_KEY**:
    ```bash
    openssl rand -hex 32
    ```
    Anota tu SECRET_KEY: `_______________`
 
-3. **Crear archivo local para anotar información**:
+2. **Crear archivo local para anotar información**:
    ```txt
    # aws-info.txt (NO SUBIR A GIT)
 
@@ -117,7 +109,6 @@ Guía completa para el despliegue de la aplicación ANB Rising Stars Showcase en
    ## Información AWS
    Mi IP Pública: _______________
    SECRET_KEY: _______________
-   GitHub Repo: https://github.com/_______________
 
    VPC ID: _______________
    Subnet ID: _______________
@@ -386,7 +377,7 @@ Si te pide confirmación, escribe `yes`.
        - **Name**: `anb-db-subnet-group`
        - **Description**: `Subnet group for ANB project`
        - **VPC**: `ANB-VPC`
-       - **Add subnets**: Seleccionar `ANB-Public-Subnet-1` (us-east-1a) y `ANB-Public-Subnet-2` (us-east-1b)
+       - **Add subnets**: Seleccionar `ANB-Public-Su  bnet-1` (us-east-1a) y `ANB-Public-Subnet-2` (us-east-1b)
    - **Public access**: `No`
    - **VPC security group**: `Choose existing` → `ANB-RDS-SG`
    - **Availability Zone**: `No preference`
@@ -632,7 +623,6 @@ ssh -i /ruta/a/anb-key-pair.pem ubuntu@<WEB_SERVER_PUBLIC_IP>
 ```
 
 **Editar el script para configurar las variables**:
-## QUEDE ACA SE CAYO EL ENTORNO DE PYTHON
 ```bash
 nano 02-webserver-setup.sh
 ```
@@ -644,7 +634,7 @@ RDS_ENDPOINT="<RDS_ENDPOINT>"                          # Ejemplo: anb-db.xxxxx.u
 RDS_PASSWORD="<TU_RDS_PASSWORD>"                       # El password que configuraste en RDS
 SECRET_KEY=""                                           # Dejar vacío, se generará automáticamente
 GITHUB_REPO="https://github.com/bendeckdavid/MISO4204-Desarrollo_Nube.git"
-GITHUB_BRANCH="feature/Implement-aws-infra"            # Rama con los cambios para AWS (usa Python 3.11)
+GITHUB_BRANCH="main"            # Rama con los cambios para AWS (usa Python 3.11)
 ```
 
 💡 **Tip sobre SECRET_KEY**: El script generará uno automáticamente y lo mostrará al final. **Debes guardarlo** para usarlo en el Worker.
@@ -698,7 +688,7 @@ RDS_ENDPOINT="<RDS_ENDPOINT>"
 RDS_PASSWORD="<TU_RDS_PASSWORD>"
 SECRET_KEY="<MISMO_SECRET_KEY_DEL_WEB_SERVER>"  # ⚠️ DEBE SER EL MISMO
 GITHUB_REPO="https://github.com/bendeckdavid/MISO4204-Desarrollo_Nube.git"
-GITHUB_BRANCH="feature/Implement-aws-infra"     # Rama con los cambios para AWS
+GITHUB_BRANCH="main"     # Rama con los cambios para AWS
 ```
 
 **Guardar** (Ctrl+O, Enter, Ctrl+X)
@@ -942,228 +932,6 @@ curl -X GET $API_URL/api/videos/ \
 
 Deberías ver el video con `status: "processed"`.
 
----
-
-## Troubleshooting
-
-### NFS no monta
-
-**Síntomas**: Error al ejecutar script o `df -h` no muestra `/app/media`
-
-**Solución**:
-```bash
-# Verificar conectividad
-ping <FILESERVER_PRIVATE_IP>
-
-# Verificar exports en File Server
-ssh -i anb-key-pair.pem ubuntu@<FILE_SERVER_IP>
-sudo exportfs -v
-showmount -e localhost
-
-# Verificar que el cliente puede ver los exports
-showmount -e <FILESERVER_PRIVATE_IP>
-
-# Intentar montar manualmente
-sudo mount -t nfs <FILESERVER_PRIVATE_IP>:/shared/media /app/media -v
-
-# Verificar Security Group permite NFS (puerto 2049)
-```
-
-### FastAPI no inicia
-
-**Síntomas**: `systemctl status fastapi` muestra "failed"
-
-**Solución**:
-```bash
-# Ver logs completos
-sudo journalctl -u fastapi -n 100 --no-pager
-
-# Verificar conexión a RDS
-psql -h <RDS_ENDPOINT> -U fastapi_user -d fastapi_db
-# (ingresar password)
-
-# Verificar variables de entorno
-sudo cat /home/appuser/MISO4204-Desarrollo_Nube/.env
-
-# Iniciar manualmente para ver errores
-cd /home/appuser/MISO4204-Desarrollo_Nube
-source .venv/bin/activate
-gunicorn app.main:app --workers 1 --worker-class uvicorn.workers.UvicornWorker --bind 127.0.0.1:8000
-```
-
-### Worker no procesa videos
-
-**Síntomas**: Videos quedan en estado "processing"
-
-**Solución**:
-```bash
-# Ver logs de Celery
-sudo journalctl -u celery -n 100 --no-pager
-
-# Verificar conexión a Redis
-redis-cli -h <WEBSERVER_PRIVATE_IP> ping
-
-# Verificar FFmpeg
-which ffmpeg
-ffmpeg -version
-
-# Iniciar worker manualmente
-cd /home/appuser/MISO4204-Desarrollo_Nube
-source .venv/bin/activate
-celery -A app.worker.celery_app worker --loglevel=debug
-
-# Verificar Security Group permite Redis (puerto 6379)
-```
-
-### Nginx 502 Bad Gateway
-
-**Síntomas**: `curl` al puerto 8080 retorna 502
-
-**Solución**:
-```bash
-# Verificar que FastAPI está corriendo
-sudo systemctl status fastapi
-
-# Ver logs de Nginx
-sudo tail -f /var/log/nginx/error.log
-
-# Verificar configuración
-sudo nginx -t
-
-# Probar FastAPI directamente
-curl http://localhost:8000/health
-
-# Reiniciar servicios
-sudo systemctl restart fastapi
-sudo systemctl restart nginx
-```
-
-### No puedo conectarme por SSH
-
-**Solución**:
-1. Verificar Security Group permite SSH desde tu IP
-2. Verificar que tu IP no cambió:
-   ```bash
-   curl https://checkip.amazonaws.com
-   ```
-3. Verificar permisos de la key:
-   ```bash
-   chmod 400 anb-key-pair.pem
-   ```
-4. Usar modo verbose:
-   ```bash
-   ssh -v -i anb-key-pair.pem ubuntu@<IP>
-   ```
-
-### Errores de conexión entre instancias
-
-**Síntomas**: Worker no puede conectarse a Redis, o no puede montar NFS
-
-**Solución**:
-1. Verificar que todas las instancias están en la misma VPC
-2. Verificar Security Groups permiten el tráfico necesario
-3. Verificar IPs privadas son correctas
-4. Usar `ping` para verificar conectividad:
-   ```bash
-   ping <IP_PRIVADA_DESTINO>
-   ```
-
----
-
-## Control de Costos
-
-### Durante Desarrollo
-
-**Detener instancias cuando no las uses** (NO terminar):
-```bash
-# AWS Console: EC2 → Instances → Select → Instance State → Stop
-```
-
-O con AWS CLI:
-```bash
-aws ec2 stop-instances --instance-ids \
-  i-fileserver \
-  i-webserver \
-  i-worker
-```
-
-### Después de la Entrega
-
-⚠️ **IMPORTANTE**: **Eliminar Amazon RDS** porque es el servicio más costoso.
-
-**Pasos para eliminar RDS**:
-1. AWS Console → RDS → Databases
-2. Seleccionar `anb-postgres-db`
-3. Actions → Delete
-4. ❌ Desmarcar "Create final snapshot"
-5. ✅ Marcar "I acknowledge..."
-6. Escribir: `delete me`
-7. Delete
-
-**Opcional**: Terminar instancias EC2 si no las vas a usar más:
-```bash
-# AWS Console: EC2 → Instances → Select → Instance State → Terminate
-```
-
----
-
-## Próximos Pasos
-
-Después de completar el despliegue:
-
-1. [ ] Ejecutar pruebas de carga (K6, Newman, etc.)
-2. [ ] Documentar resultados en `/docs/Entrega_2/`
-3. [ ] Crear diagramas de arquitectura
-4. [ ] Actualizar reporte de SonarQube
-5. [ ] Grabar video de sustentación (15-20 min)
-6. [ ] Crear release en GitHub
-7. [ ] ⚠️ **ELIMINAR RDS** para ahorrar costos
-
----
-
-## Comandos Útiles
-
-### Ver logs en tiempo real
-```bash
-# FastAPI (Web Server)
-sudo journalctl -u fastapi -f
-
-# Celery (Worker)
-sudo journalctl -u celery -f
-
-# Nginx (Web Server)
-sudo tail -f /var/log/nginx/fastapi-error.log
-
-# NFS (File Server)
-sudo journalctl -u nfs-kernel-server -f
-```
-
-### Reiniciar servicios
-```bash
-# Web Server
-sudo systemctl restart fastapi nginx redis-server
-
-# Worker
-sudo systemctl restart celery
-
-# File Server
-sudo systemctl restart nfs-kernel-server
-```
-
-### Ver estado de servicios
-```bash
-sudo systemctl status <servicio>
-```
-
-### Ver uso de recursos
-```bash
-htop
-df -h
-free -h
-```
-
----
-
 **¡Despliegue completado! 🎉**
 
-Si tienes problemas, revisa la sección de [Troubleshooting](#troubleshooting) o los logs de los servicios.
+---
