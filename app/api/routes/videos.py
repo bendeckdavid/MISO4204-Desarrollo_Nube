@@ -3,6 +3,7 @@
 from fastapi import APIRouter, Depends, status, HTTPException, UploadFile, File, Form
 from sqlalchemy.orm import Session
 from typing import List
+import aiofiles
 
 from app.core.config import settings
 from app.core.security import get_current_user
@@ -73,9 +74,9 @@ async def upload_video(
         # Read the entire content into memory (for small-to-medium video files)
         content = file.file.read()
 
-        # Write to disk synchronously
-        with open(video_file_path, "wb") as f:
-            f.write(content)
+        # Write to disk asynchronously
+        async with aiofiles.open(video_file_path, "wb") as f:
+            await f.write(content)
         # Verify the saved file
         if os.path.exists(video_file_path):
             file_size = os.path.getsize(video_file_path)
