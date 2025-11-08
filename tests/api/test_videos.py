@@ -157,6 +157,51 @@ class TestVideoUpload:
             status.HTTP_422_UNPROCESSABLE_ENTITY,
         ]
 
+    @patch("app.api.routes.videos.process_video")
+    @patch("app.api.routes.videos.os.path.exists")
+    @patch("app.api.routes.videos.os.makedirs")
+    @patch("app.api.routes.videos.aiofiles.open", create=True)
+    def test_upload_video_file_save_error(
+        self,
+        mock_aiofiles_open,
+        mock_makedirs,
+        mock_exists,
+        mock_process_video,
+        client: TestClient,
+        db,
+    ):
+        """Test video upload when file save fails"""
+        # Mock file operations to simulate file not being saved
+        mock_exists.return_value = False  # File doesn't exist after save
+        mock_file = MagicMock()
+        mock_file.write = AsyncMock()
+        mock_aiofiles_open.return_value.__aenter__.return_value = mock_file
+        mock_aiofiles_open.return_value.__aexit__.return_value = None
+
+        user = models.User(
+            first_name="Juan",
+            last_name="Pérez",
+            email="juan_error@example.com",
+            password="SecurePass123!",
+            city="Medellín",
+            country="Colombia",
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+        token = create_access_token(data={"sub": str(user.id)})
+
+        fake_file = io.BytesIO(b"fake video content")
+        response = client.post(
+            "/api/videos/upload",
+            files={"file": ("test.mp4", fake_file, "video/mp4")},
+            data={"title": "Test Video"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+        assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+
 
 class TestListMyVideos:
     """Tests for listing user's videos"""
@@ -541,3 +586,48 @@ class TestDeleteVideo:
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "vote" in response.json()["detail"].lower()
+
+    @patch("app.api.routes.videos.os.path.exists")
+    @patch("app.api.routes.videos.os.remove")
+    def test_delete_video_file_removal_error(
+        self, mock_remove, mock_exists, client: TestClient, db
+    ):
+        """Test deleting video when file removal fails"""
+        user = models.User(
+            first_name="Juan",
+            last_name="Pérez",
+            email="juan_remove_error@example.com",
+            password="SecurePass123!",
+            city="Medellín",
+            country="Colombia",
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+        video = models.Video(
+            title="Video with File Error",
+            user_id=user.id,
+            status="completed",
+            original_file_path="/uploads/test.mp4",
+            processed_file_path="/processed/test.mp4",
+        )
+        db.add(video)
+        db.commit()
+        db.refresh(video)
+
+        # Mock files exist but removal fails
+        mock_exists.return_value = True
+        mock_remove.side_effect = Exception("Permission denied")
+
+        token = create_access_token(data={"sub": str(user.id)})
+
+        response = client.delete(
+            f"/api/videos/{video.id}",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+        # Should still succeed even if file removal fails
+        assert response.status_code == status.HTTP_200_OK
+        # Verify remove was attempted
+        assert mock_remove.call_count >= 1
