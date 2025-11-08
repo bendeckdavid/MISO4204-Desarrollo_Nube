@@ -4,6 +4,7 @@ version = "1.0.0"
 description = "FastAPI Template - Scalable REST API with async processing"
 authors = ["Your Team <team@example.com>"]
 readme = "README.md"
+packages = []
 
 [tool.poetry.dependencies]
 python = "^3.11"

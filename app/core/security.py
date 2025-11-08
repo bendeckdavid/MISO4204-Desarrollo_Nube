@@ -133,7 +133,7 @@ def get_current_user_optional(
     try:
         # Decodificar el token
         token = credentials.credentials
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[ALGORITHM])
         user_id: str = payload.get("sub")
 
         if user_id is None:
