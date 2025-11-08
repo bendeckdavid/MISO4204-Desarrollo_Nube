@@ -3,15 +3,14 @@
 from fastapi import APIRouter, Depends, status, HTTPException, UploadFile, File, Form
 from sqlalchemy.orm import Session
 from typing import List
-import aiofiles
 
 from app.core.config import settings
 from app.core.security import get_current_user
+from app.core.storage import storage
 from app.db import models
 from app.db.database import get_db
 from app.schemas.video import VideoUploadResponse, VideoDetailResponse, VideoDeleteResponse
 from app.worker.videos import process_video
-import os
 
 router = APIRouter()
 
@@ -46,9 +45,14 @@ async def upload_video(
         )
 
     new_video_id = models.generate_uuid()
-    # Use media directory (NFS mount point for AWS, volume for local Docker)
-    video_file_path = f"{settings.UPLOAD_BASE_DIR}/{new_video_id}.mp4"
-    processed_file_path = f"{settings.PROCESSED_BASE_DIR}/{new_video_id}.mp4"
+
+    # Build storage paths based on backend (S3 or local)
+    if settings.STORAGE_BACKEND == "s3":
+        video_file_path = f"{settings.S3_UPLOAD_PREFIX}{new_video_id}.mp4"
+        processed_file_path = f"{settings.S3_PROCESSED_PREFIX}{new_video_id}.mp4"
+    else:
+        video_file_path = f"{settings.UPLOAD_BASE_DIR}/{new_video_id}.mp4"
+        processed_file_path = f"{settings.PROCESSED_BASE_DIR}/{new_video_id}.mp4"
 
     # Create database record
     video = models.Video(
@@ -63,25 +67,18 @@ async def upload_video(
     db.commit()
     db.refresh(video)
 
-    # Create the media directories if they don't exist
-    os.makedirs(settings.UPLOAD_BASE_DIR, exist_ok=True)
-    os.makedirs(settings.PROCESSED_BASE_DIR, exist_ok=True)
-
-    # Save the uploaded file to disk
+    # Upload file using storage backend (local or S3)
     try:
         # Reset file pointer to beginning
         file.file.seek(0)
-        # Read the entire content into memory (for small-to-medium video files)
+        # Read the entire content into memory
         content = file.file.read()
 
-        # Write to disk asynchronously
-        async with aiofiles.open(video_file_path, "wb") as f:
-            await f.write(content)
-        # Verify the saved file
-        if os.path.exists(video_file_path):
-            file_size = os.path.getsize(video_file_path)
-            print(file_size)
-        else:
+        # Upload using storage backend
+        storage.upload_file(content, video_file_path)
+
+        # Verify upload
+        if not storage.file_exists(video_file_path):
             raise FileNotFoundError("File was not saved properly")
 
     except Exception as e:
@@ -205,25 +202,29 @@ async def delete_video(
             detail=f"Cannot delete video: it has {vote_count} vote(s)",
         )
 
-    # 5. Delete files from disk (if they exist)
+    # 5. Delete files from storage (local or S3)
     files_deleted = []
     files_not_found = []
 
     # Delete original file
-    if video.original_file_path and os.path.exists(video.original_file_path):
+    if video.original_file_path:
         try:
-            os.remove(video.original_file_path)
-            files_deleted.append("original")
+            if storage.delete_file(video.original_file_path):
+                files_deleted.append("original")
+            else:
+                files_not_found.append("original")
         except Exception as e:
             print(f"Error deleting original file: {e}")
     else:
         files_not_found.append("original")
 
     # Delete processed file
-    if video.processed_file_path and os.path.exists(video.processed_file_path):
+    if video.processed_file_path:
         try:
-            os.remove(video.processed_file_path)
-            files_deleted.append("processed")
+            if storage.delete_file(video.processed_file_path):
+                files_deleted.append("processed")
+            else:
+                files_not_found.append("processed")
         except Exception as e:
             print(f"Error deleting processed file: {e}")
     else:

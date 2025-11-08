@@ -1,10 +1,12 @@
 """Celery tasks - Video processing"""
 
 import os
+import tempfile
 from app.db.database import SessionLocal
 from app.worker.celery_app import celery_app
 from app.db.models import Video
 from app.core.config import settings
+from app.core.storage import storage
 from moviepy import VideoFileClip, TextClip, CompositeVideoClip
 
 
@@ -64,10 +66,17 @@ def ensure_directory_exists(file_path: str, fallback_base_dir: str = "/app") -> 
 
 @celery_app.task(bind=True, max_retries=3)
 def process_video(self, video_id: str):
-    """Process video task with proper database session management"""
+    """Process video task with proper database session management
+
+    Supports both local and S3 storage backends.
+    For S3: Downloads to temp, processes, uploads back to S3
+    For local: Processes directly on disk
+    """
 
     # Create database session for Celery task
     db = SessionLocal()
+    temp_original = None
+    temp_processed = None
 
     try:
         # Get the video record from the database
@@ -79,22 +88,40 @@ def process_video(self, video_id: str):
         video.status = "processing"
         db.commit()
 
-        # Resolve file paths within the container filesystem
-        container_original_path = resolve_container_path(
-            video.original_file_path, settings.APP_BASE_DIR
-        )
+        # Handle file access based on storage backend
+        if settings.STORAGE_BACKEND == "s3":
+            # S3: Download to temp files for processing
+            with tempfile.NamedTemporaryFile(
+                delete=False, suffix=".mp4"
+            ) as temp_orig, tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as temp_proc:
+                temp_original = temp_orig.name
+                temp_processed = temp_proc.name
 
-        # Validate file permissions
-        if not os.access(container_original_path, os.R_OK):
-            raise PermissionError(f"Cannot read original video file: {container_original_path}")
+                # Download original from S3
+                original_data = storage.download_file(video.original_file_path)
+                temp_orig.write(original_data)
+                temp_orig.flush()
 
-        # Ensure processed file directory exists and get the final path
-        container_processed_path = ensure_directory_exists(
-            video.processed_file_path, settings.APP_BASE_DIR
-        )
+            container_original_path = temp_original
+            container_processed_path = temp_processed
+        else:
+            # Local: Use resolve_container_path for local filesystem
+            container_original_path = resolve_container_path(
+                video.original_file_path, settings.APP_BASE_DIR
+            )
 
-        # Process the video to trim it to the first 30 seconds (or full duration if shorter),
-        # update its resolution to 720p and add a watermark using moviepy
+            # Validate file permissions
+            if not os.access(container_original_path, os.R_OK):
+                raise PermissionError(
+                    f"Cannot read original video file: {container_original_path}"
+                )
+
+            # Ensure processed file directory exists
+            container_processed_path = ensure_directory_exists(
+                video.processed_file_path, settings.APP_BASE_DIR
+            )
+
+        # Process the video using moviepy
         original_clip = VideoFileClip(container_original_path)
         trim_duration = min(30, original_clip.duration)
         clip = original_clip.subclipped(0, trim_duration)
@@ -106,7 +133,7 @@ def process_video(self, video_id: str):
         )
         final_clip = CompositeVideoClip([clip, watermark])
 
-        # Save the processed video to a new file on disk
+        # Save the processed video
         final_clip.write_videofile(container_processed_path, codec="libx264", audio_codec="aac")
 
         # Clean up moviepy objects to free memory
@@ -114,9 +141,13 @@ def process_video(self, video_id: str):
         clip.close()
         original_clip.close()
 
-        # Update the videos table with the final processed file path and set status to "processed"
-        # Store the container path that was actually used
-        video.processed_file_path = container_processed_path
+        # Upload processed video if using S3
+        if settings.STORAGE_BACKEND == "s3":
+            with open(container_processed_path, "rb") as f:
+                processed_data = f.read()
+            storage.upload_file(processed_data, video.processed_file_path)
+
+        # Update the videos table
         video.status = "processed"
         video.is_published = True
         db.commit()
@@ -131,12 +162,23 @@ def process_video(self, video_id: str):
                 video.status = "failed"
                 db.commit()
         except Exception as db_error:
-            # Log database error but continue with retry
             print(f"Database error while updating status to failed: {db_error}")
 
         # Retry the task with exponential backoff
         raise self.retry(exc=e, countdown=60, max_retries=3)
 
     finally:
+        # Clean up temp files if using S3
+        if temp_original and os.path.exists(temp_original):
+            try:
+                os.unlink(temp_original)
+            except Exception:
+                pass
+        if temp_processed and os.path.exists(temp_processed):
+            try:
+                os.unlink(temp_processed)
+            except Exception:
+                pass
+
         # Always close the database session
         db.close()
