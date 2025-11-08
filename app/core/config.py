@@ -12,13 +12,21 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api"
     MAX_VIDEO_SIZE: int = 10 * 1024 * 1024  # 10 MB
 
-    # File Storage (Container-aware paths)
-    # For AWS deployment with NFS, use /app/media
-    # For local Docker, this gets mounted from docker volumes
+    # File Storage
+    # Storage backend: 'local' or 's3'
+    STORAGE_BACKEND: str = "local"  # Default to local for development
+
+    # Local storage paths (for local development)
     MEDIA_ROOT: str = "/app/media"
     UPLOAD_BASE_DIR: str = "/app/media/uploads"
     PROCESSED_BASE_DIR: str = "/app/media/processed"
     APP_BASE_DIR: str = "/app"  # Container/EC2 working directory
+
+    # AWS S3 Configuration (uses IAM Role by default, no keys needed)
+    AWS_S3_BUCKET: str = ""  # Set in production
+    AWS_REGION: str = "us-east-1"
+    S3_UPLOAD_PREFIX: str = "uploads/"
+    S3_PROCESSED_PREFIX: str = "processed/"
 
     # Database
     DATABASE_URL: str
