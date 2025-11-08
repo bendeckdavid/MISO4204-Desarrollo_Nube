@@ -1,7 +1,4 @@
 """Tests for database module"""
-import pytest
-from sqlalchemy.exc import SQLAlchemyError
-
 from app.db.database import get_db
 
 

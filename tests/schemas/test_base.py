@@ -2,8 +2,6 @@
 from datetime import datetime
 from uuid import uuid4
 
-import pytest
-
 from app.schemas.base import BaseSchema
 
 

@@ -1,8 +1,6 @@
 """Tests for Celery tasks"""
 from unittest.mock import Mock, patch
 
-import pytest
-
 from app.worker.tasks import example_task
 
 
