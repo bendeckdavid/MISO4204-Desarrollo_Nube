@@ -457,3 +457,87 @@ class TestDeleteVideo:
         )
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    @patch("app.api.routes.videos.os.path.exists")
+    @patch("app.api.routes.videos.os.remove")
+    def test_delete_video_with_processed_file(
+        self, mock_remove, mock_exists, client: TestClient, db
+    ):
+        """Test deleting video with processed file that exists"""
+        user = models.User(
+            first_name="Juan",
+            last_name="Pérez",
+            email="juan_proc@example.com",
+            password="SecurePass123!",
+            city="Medellín",
+            country="Colombia",
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+        video = models.Video(
+            title="Processed Video",
+            user_id=user.id,
+            status="completed",
+            original_file_path="/uploads/test.mp4",
+            processed_file_path="/processed/test.mp4",
+        )
+        db.add(video)
+        db.commit()
+        db.refresh(video)
+
+        # Mock both files exist
+        mock_exists.return_value = True
+
+        token = create_access_token(data={"sub": str(user.id)})
+
+        response = client.delete(
+            f"/api/videos/{video.id}",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        # Verify both files were attempted to be removed
+        assert mock_remove.call_count == 2
+
+    def test_delete_video_with_votes(self, client: TestClient, db):
+        """Test deleting video that has votes"""
+        user = models.User(
+            first_name="Juan",
+            last_name="Pérez",
+            email="juan_votes@example.com",
+            password="SecurePass123!",
+            city="Medellín",
+            country="Colombia",
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+        video = models.Video(
+            title="Voted Video",
+            user_id=user.id,
+            status="completed",
+            is_published=True,
+            original_file_path="/uploads/test.mp4",
+            processed_file_path="/processed/test.mp4",
+        )
+        db.add(video)
+        db.commit()
+        db.refresh(video)
+
+        # Add a vote to the video
+        vote = models.Vote(user_id=user.id, video_id=video.id)
+        db.add(vote)
+        db.commit()
+
+        token = create_access_token(data={"sub": str(user.id)})
+
+        response = client.delete(
+            f"/api/videos/{video.id}",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "vote" in response.json()["detail"].lower()

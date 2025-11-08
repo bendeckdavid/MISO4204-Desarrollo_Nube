@@ -240,6 +240,52 @@ class TestVoteVideo:
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
+    def test_vote_video_not_processed(self, client: TestClient, db):
+        """Test voting on a video that is not yet processed"""
+        owner = models.User(
+            first_name="Owner",
+            last_name="User",
+            email="owner_pending@example.com",
+            password="SecurePass123!",
+            city="Bogotá",
+            country="Colombia",
+        )
+        voter = models.User(
+            first_name="Voter",
+            last_name="User",
+            email="voter_pending@example.com",
+            password="SecurePass123!",
+            city="Medellín",
+            country="Colombia",
+        )
+        db.add_all([owner, voter])
+        db.commit()
+        db.refresh(owner)
+        db.refresh(voter)
+
+        # Create video with pending status
+        video = models.Video(
+            title="Pending Video",
+            user_id=owner.id,
+            status="pending",
+            original_file_path="/uploads/video.mp4",
+            processed_file_path="/processed/video.mp4",
+            is_published=True,
+        )
+        db.add(video)
+        db.commit()
+        db.refresh(video)
+
+        token = create_access_token(data={"sub": str(voter.id)})
+
+        response = client.post(
+            f"/api/public/videos/{video.id}/vote",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "disponible" in response.json()["detail"].lower()
+
 
 class TestRanking:
     """Tests for ranking endpoint"""
