@@ -1,6 +1,6 @@
 """Tests for video management endpoints"""
 import io
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, AsyncMock
 from fastapi import status
 from fastapi.testclient import TestClient
 
@@ -15,10 +15,10 @@ class TestVideoUpload:
     @patch("app.api.routes.videos.os.path.exists")
     @patch("app.api.routes.videos.os.path.getsize")
     @patch("app.api.routes.videos.os.makedirs")
-    @patch("builtins.open", create=True)
+    @patch("app.api.routes.videos.aiofiles.open", create=True)
     def test_upload_video_success(
         self,
-        mock_open,
+        mock_aiofiles_open,
         mock_makedirs,
         mock_getsize,
         mock_exists,
@@ -31,7 +31,9 @@ class TestVideoUpload:
         mock_exists.return_value = True
         mock_getsize.return_value = 1024
         mock_file = MagicMock()
-        mock_open.return_value.__enter__.return_value = mock_file
+        mock_file.write = AsyncMock()
+        mock_aiofiles_open.return_value.__aenter__.return_value = mock_file
+        mock_aiofiles_open.return_value.__aexit__.return_value = None
 
         # Create and login user
         user = models.User(
