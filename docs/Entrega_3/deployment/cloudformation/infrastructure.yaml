@@ -776,7 +776,7 @@ Resources:
           set -e
           exec > >(tee /var/log/user-data.log) 2>&1
 
-          echo "=== Starting Worker Setup ==="
+          echo "=== Starting Worker Setup v2 ==="
           echo "Timestamp: $(date)"
 
           # Wait for web server to be ready (Redis)
