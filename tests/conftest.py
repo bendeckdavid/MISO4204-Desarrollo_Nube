@@ -11,8 +11,9 @@ from app.db.database import Base, get_db
 from app.main import app
 
 # Use PostgreSQL for tests - same as production
+# Note: docker-compose maps PostgreSQL to port 5433 on host
 SQLALCHEMY_DATABASE_URL = os.getenv(
-    "DATABASE_URL", "postgresql://fastapi_user:fastapi_password@localhost:5432/fastapi_db"
+    "DATABASE_URL", "postgresql://fastapi_user:fastapi_password@localhost:5433/fastapi_db"
 )
 
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
