@@ -252,9 +252,6 @@ class TestVideoUpload:
         fake_video = io.BytesIO(large_content)
         fake_video.name = "large_video.mp4"
 
-        # Mock file.size property
-        from unittest.mock import MagicMock
-
         response = client.post(
             "/api/videos/upload",
             files={"file": ("large_video.mp4", fake_video, "video/mp4")},
