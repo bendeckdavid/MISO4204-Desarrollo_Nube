@@ -79,3 +79,12 @@ celerybeat.pid
 
 # SonarQube
 .scannerwork/
+
+# CloudFormation sensitive parameters
+cloudformation/parameters.json
+cloudformation/aws-info.txt
+docs/Entrega_3/deployment/cloudformation/parameters.json
+
+# AWS credentials and keys
+*.pem
+aws-credentials.txt
