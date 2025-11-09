@@ -775,7 +775,9 @@ class TestPresignedURLs:
 
     @patch("app.api.routes.videos.settings")
     @patch("app.api.routes.videos.storage")
-    def test_list_videos_with_s3_presigned_urls(self, mock_storage, mock_settings, client: TestClient, db):
+    def test_list_videos_with_s3_presigned_urls(
+        self, mock_storage, mock_settings, client: TestClient, db
+    ):
         """Test list_user_videos generates presigned URLs for S3"""
         mock_settings.STORAGE_BACKEND = "s3"
         mock_storage.get_presigned_url.return_value = "https://s3.amazonaws.com/presigned-url"
@@ -818,7 +820,9 @@ class TestPresignedURLs:
 
     @patch("app.api.routes.videos.settings")
     @patch("app.api.routes.videos.storage")
-    def test_list_videos_s3_presigned_url_error(self, mock_storage, mock_settings, client: TestClient, db):
+    def test_list_videos_s3_presigned_url_error(
+        self, mock_storage, mock_settings, client: TestClient, db
+    ):
         """Test list_user_videos handles presigned URL generation errors"""
         mock_settings.STORAGE_BACKEND = "s3"
         mock_storage.get_presigned_url.side_effect = Exception("S3 Error")
@@ -900,12 +904,14 @@ class TestPresignedURLs:
 
     @patch("app.api.routes.videos.settings")
     @patch("app.api.routes.videos.storage")
-    def test_get_video_detail_with_s3_presigned_urls(self, mock_storage, mock_settings, client: TestClient, db):
+    def test_get_video_detail_with_s3_presigned_urls(
+        self, mock_storage, mock_settings, client: TestClient, db
+    ):
         """Test get_video_detail generates presigned URLs for S3"""
         mock_settings.STORAGE_BACKEND = "s3"
         mock_storage.get_presigned_url.side_effect = [
             "https://s3.amazonaws.com/original-presigned-url",
-            "https://s3.amazonaws.com/processed-presigned-url"
+            "https://s3.amazonaws.com/processed-presigned-url",
         ]
 
         # Create user
@@ -946,7 +952,9 @@ class TestPresignedURLs:
 
     @patch("app.api.routes.videos.settings")
     @patch("app.api.routes.videos.storage")
-    def test_get_video_detail_s3_presigned_url_error(self, mock_storage, mock_settings, client: TestClient, db):
+    def test_get_video_detail_s3_presigned_url_error(
+        self, mock_storage, mock_settings, client: TestClient, db
+    ):
         """Test get_video_detail handles presigned URL generation errors"""
         mock_settings.STORAGE_BACKEND = "s3"
         mock_storage.get_presigned_url.side_effect = Exception("S3 Error")
