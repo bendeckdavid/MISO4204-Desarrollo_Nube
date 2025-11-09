@@ -487,9 +487,7 @@ class TestDeleteVideo:
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
     @patch("app.api.routes.videos.storage")
-    def test_delete_video_with_processed_file(
-        self, mock_storage, client: TestClient, db
-    ):
+    def test_delete_video_with_processed_file(self, mock_storage, client: TestClient, db):
         """Test deleting video with processed file that exists"""
         user = models.User(
             first_name="Juan",
@@ -570,9 +568,7 @@ class TestDeleteVideo:
         assert "vote" in response.json()["detail"].lower()
 
     @patch("app.api.routes.videos.storage")
-    def test_delete_video_file_removal_error(
-        self, mock_storage, client: TestClient, db
-    ):
+    def test_delete_video_file_removal_error(self, mock_storage, client: TestClient, db):
         """Test deleting video when file removal fails"""
         user = models.User(
             first_name="Juan",
