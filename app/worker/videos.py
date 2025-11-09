@@ -112,9 +112,7 @@ def process_video(self, video_id: str):
 
             # Validate file permissions
             if not os.access(container_original_path, os.R_OK):
-                raise PermissionError(
-                    f"Cannot read original video file: {container_original_path}"
-                )
+                raise PermissionError(f"Cannot read original video file: {container_original_path}")
 
             # Ensure processed file directory exists
             container_processed_path = ensure_directory_exists(
