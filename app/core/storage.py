@@ -8,6 +8,30 @@ from botocore.exceptions import ClientError
 from app.core.config import settings
 
 
+class StorageError(Exception):
+    """Base exception for storage operations"""
+
+    pass
+
+
+class StorageUploadError(StorageError):
+    """Exception raised when file upload fails"""
+
+    pass
+
+
+class StorageDownloadError(StorageError):
+    """Exception raised when file download fails"""
+
+    pass
+
+
+class StorageURLError(StorageError):
+    """Exception raised when URL generation fails"""
+
+    pass
+
+
 class StorageBackend:
     """Abstract storage backend"""
 
@@ -92,7 +116,7 @@ class S3Storage(StorageBackend):
             )
             return file_path
         except ClientError as e:
-            raise Exception(f"Failed to upload to S3: {str(e)}")
+            raise StorageUploadError(f"Failed to upload to S3: {str(e)}")
 
     def download_file(self, file_path: str) -> bytes:
         """Download file from S3"""
@@ -100,7 +124,7 @@ class S3Storage(StorageBackend):
             response = self.s3_client.get_object(Bucket=self.bucket, Key=file_path)
             return response["Body"].read()
         except ClientError as e:
-            raise Exception(f"Failed to download from S3: {str(e)}")
+            raise StorageDownloadError(f"Failed to download from S3: {str(e)}")
 
     def delete_file(self, file_path: str) -> bool:
         """Delete file from S3"""
@@ -132,7 +156,7 @@ class S3Storage(StorageBackend):
             )
             return url
         except ClientError as e:
-            raise Exception(f"Failed to generate presigned URL: {str(e)}")
+            raise StorageURLError(f"Failed to generate presigned URL: {str(e)}")
 
     def _get_content_type(self, file_path: str) -> str:
         """Determine content type based on file extension"""
