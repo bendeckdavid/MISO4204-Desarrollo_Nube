@@ -158,6 +158,25 @@ def get_video_detail(
     }
 
 
+def _delete_video_file(file_path: str, file_type: str) -> tuple[bool, bool]:
+    """
+    Helper function to delete a single video file.
+
+    Returns:
+        tuple: (deleted, not_found) - True if file was deleted, True if file was not found
+    """
+    if not file_path:
+        return False, True
+
+    try:
+        if storage.delete_file(file_path):
+            return True, False
+        return False, True
+    except Exception as e:
+        print(f"Error deleting {file_type} file: {e}")
+        return False, False
+
+
 @router.delete("/{video_id}", response_model=VideoDeleteResponse, status_code=status.HTTP_200_OK)
 async def delete_video(
     video_id: str,
@@ -207,27 +226,17 @@ async def delete_video(
     files_not_found = []
 
     # Delete original file
-    if video.original_file_path:
-        try:
-            if storage.delete_file(video.original_file_path):
-                files_deleted.append("original")
-            else:
-                files_not_found.append("original")
-        except Exception as e:
-            print(f"Error deleting original file: {e}")
-    else:
+    deleted, not_found = _delete_video_file(video.original_file_path, "original")
+    if deleted:
+        files_deleted.append("original")
+    if not_found:
         files_not_found.append("original")
 
     # Delete processed file
-    if video.processed_file_path:
-        try:
-            if storage.delete_file(video.processed_file_path):
-                files_deleted.append("processed")
-            else:
-                files_not_found.append("processed")
-        except Exception as e:
-            print(f"Error deleting processed file: {e}")
-    else:
+    deleted, not_found = _delete_video_file(video.processed_file_path, "processed")
+    if deleted:
+        files_deleted.append("processed")
+    if not_found:
         files_not_found.append("processed")
 
     # 6. Delete video record from database
