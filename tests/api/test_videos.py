@@ -185,6 +185,135 @@ class TestVideoUpload:
 
         assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
 
+    def test_upload_video_empty_filename(self, client: TestClient, db):
+        """Test video upload with empty filename (returns 422 from FastAPI)"""
+        user = models.User(
+            first_name="Juan",
+            last_name="Pérez",
+            email="juan5@example.com",
+            password="SecurePass123!",
+            city="Medellín",
+            country="Colombia",
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+        token = create_access_token(data={"sub": str(user.id)})
+
+        # Create file with empty filename
+        fake_video = io.BytesIO(b"fake video content")
+        fake_video.name = ""
+
+        response = client.post(
+            "/api/videos/upload",
+            files={"file": ("", fake_video, "video/mp4")},
+            data={"title": "Test Video"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+        # FastAPI returns 422 for empty filenames
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+    @patch("app.api.routes.videos.process_video")
+    @patch("app.api.routes.videos.storage")
+    @patch("app.api.routes.videos.settings")
+    def test_upload_video_file_size_exceeds_limit(
+        self,
+        mock_settings,
+        mock_storage,
+        mock_process_video,
+        client: TestClient,
+        db,
+    ):
+        """Test video upload when file size exceeds limit"""
+        # Mock settings with small file size limit
+        mock_settings.MAX_VIDEO_SIZE = 100
+        mock_settings.STORAGE_BACKEND = "local"
+        mock_settings.UPLOAD_BASE_DIR = "/uploads"
+        mock_settings.PROCESSED_BASE_DIR = "/processed"
+
+        user = models.User(
+            first_name="Juan",
+            last_name="Pérez",
+            email="juan6@example.com",
+            password="SecurePass123!",
+            city="Medellín",
+            country="Colombia",
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+        token = create_access_token(data={"sub": str(user.id)})
+
+        # Create a file that exceeds the limit
+        large_content = b"x" * 200  # 200 bytes > 100 bytes limit
+        fake_video = io.BytesIO(large_content)
+        fake_video.name = "large_video.mp4"
+
+        # Mock file.size property
+        from unittest.mock import MagicMock
+
+        response = client.post(
+            "/api/videos/upload",
+            files={"file": ("large_video.mp4", fake_video, "video/mp4")},
+            data={"title": "Large Video"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "exceeds limit" in response.json()["detail"]
+
+    @patch("app.api.routes.videos.process_video")
+    @patch("app.api.routes.videos.storage")
+    @patch("app.api.routes.videos.settings")
+    def test_upload_video_s3_storage_backend(
+        self,
+        mock_settings,
+        mock_storage,
+        mock_process_video,
+        client: TestClient,
+        db,
+    ):
+        """Test video upload with S3 storage backend"""
+        # Mock settings for S3
+        mock_settings.STORAGE_BACKEND = "s3"
+        mock_settings.S3_UPLOAD_PREFIX = "uploads/"
+        mock_settings.S3_PROCESSED_PREFIX = "processed/"
+        mock_settings.MAX_VIDEO_SIZE = 100 * 1024 * 1024
+
+        # Mock storage operations
+        mock_storage.upload_file.return_value = "uploads/test.mp4"
+        mock_storage.file_exists.return_value = True
+
+        user = models.User(
+            first_name="Juan",
+            last_name="Pérez",
+            email="juan7@example.com",
+            password="SecurePass123!",
+            city="Medellín",
+            country="Colombia",
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+        token = create_access_token(data={"sub": str(user.id)})
+
+        fake_video = io.BytesIO(b"fake video content")
+        fake_video.name = "test.mp4"
+
+        response = client.post(
+            "/api/videos/upload",
+            files={"file": ("test.mp4", fake_video, "video/mp4")},
+            data={"title": "S3 Test Video"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+        assert response.status_code == status.HTTP_201_CREATED
+        assert "video_id" in response.json()
+
 
 class TestListMyVideos:
     """Tests for listing user's videos"""
@@ -607,3 +736,38 @@ class TestDeleteVideo:
         assert response.status_code == status.HTTP_200_OK
         # Verify delete was attempted
         assert mock_storage.delete_file.call_count >= 1
+
+
+class TestDeleteVideoFile:
+    """Tests for _delete_video_file helper function"""
+
+    @patch("app.api.routes.videos.storage")
+    def test_delete_video_file_with_empty_path(self, mock_storage):
+        """Test _delete_video_file with empty file path"""
+        from app.api.routes.videos import _delete_video_file
+
+        # Test with None
+        deleted, not_found = _delete_video_file(None, "original")
+        assert deleted is False
+        assert not_found is True
+        mock_storage.delete_file.assert_not_called()
+
+        # Test with empty string
+        deleted, not_found = _delete_video_file("", "processed")
+        assert deleted is False
+        assert not_found is True
+        mock_storage.delete_file.assert_not_called()
+
+    @patch("app.api.routes.videos.storage")
+    def test_delete_video_file_with_exception(self, mock_storage):
+        """Test _delete_video_file handles exceptions gracefully"""
+        from app.api.routes.videos import _delete_video_file
+
+        # Mock storage to raise exception
+        mock_storage.delete_file.side_effect = Exception("Storage error")
+
+        deleted, not_found = _delete_video_file("/path/to/file.mp4", "original")
+
+        assert deleted is False
+        assert not_found is False
+        mock_storage.delete_file.assert_called_once_with("/path/to/file.mp4")
