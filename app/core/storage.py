@@ -1,7 +1,7 @@
 """Storage abstraction layer for local and S3 storage"""
 
 import os
-from typing import BinaryIO, Optional
+
 import boto3
 from botocore.exceptions import ClientError
 
