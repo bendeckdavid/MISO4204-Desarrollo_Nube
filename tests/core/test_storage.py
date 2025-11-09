@@ -388,3 +388,52 @@ class TestGetStorage:
         storage = get_storage()
 
         assert isinstance(storage, LocalStorage)
+
+
+class TestStorageBackend:
+    """Tests for abstract StorageBackend class"""
+
+    def test_upload_file_not_implemented(self):
+        """Test upload_file raises NotImplementedError"""
+        from app.core.storage import StorageBackend
+
+        backend = StorageBackend()
+
+        with pytest.raises(NotImplementedError):
+            backend.upload_file(b"data", "path")
+
+    def test_download_file_not_implemented(self):
+        """Test download_file raises NotImplementedError"""
+        from app.core.storage import StorageBackend
+
+        backend = StorageBackend()
+
+        with pytest.raises(NotImplementedError):
+            backend.download_file("path")
+
+    def test_delete_file_not_implemented(self):
+        """Test delete_file raises NotImplementedError"""
+        from app.core.storage import StorageBackend
+
+        backend = StorageBackend()
+
+        with pytest.raises(NotImplementedError):
+            backend.delete_file("path")
+
+    def test_file_exists_not_implemented(self):
+        """Test file_exists raises NotImplementedError"""
+        from app.core.storage import StorageBackend
+
+        backend = StorageBackend()
+
+        with pytest.raises(NotImplementedError):
+            backend.file_exists("path")
+
+    def test_get_file_url_not_implemented(self):
+        """Test get_file_url raises NotImplementedError"""
+        from app.core.storage import StorageBackend
+
+        backend = StorageBackend()
+
+        with pytest.raises(NotImplementedError):
+            backend.get_file_url("path")
