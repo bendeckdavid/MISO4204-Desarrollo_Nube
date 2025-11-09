@@ -64,6 +64,85 @@ def ensure_directory_exists(file_path: str, fallback_base_dir: str = "/app") -> 
         raise
 
 
+def _setup_file_paths(video, settings):
+    """
+    Setup file paths for video processing based on storage backend.
+
+    Returns:
+        tuple: (original_path, processed_path, temp_original, temp_processed)
+    """
+    temp_original = None
+    temp_processed = None
+
+    if settings.STORAGE_BACKEND == "s3":
+        # S3: Download to temp files for processing
+        with tempfile.NamedTemporaryFile(
+            delete=False, suffix=".mp4"
+        ) as temp_orig, tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as temp_proc:
+            temp_original = temp_orig.name
+            temp_processed = temp_proc.name
+
+            # Download original from S3
+            original_data = storage.download_file(video.original_file_path)
+            temp_orig.write(original_data)
+            temp_orig.flush()
+
+        return temp_original, temp_processed, temp_original, temp_processed
+    else:
+        # Local: Use resolve_container_path for local filesystem
+        original_path = resolve_container_path(video.original_file_path, settings.APP_BASE_DIR)
+
+        # Validate file permissions
+        if not os.access(original_path, os.R_OK):
+            raise PermissionError(f"Cannot read original video file: {original_path}")
+
+        # Ensure processed file directory exists
+        processed_path = ensure_directory_exists(video.processed_file_path, settings.APP_BASE_DIR)
+
+        return original_path, processed_path, None, None
+
+
+def _process_video_file(original_path, processed_path):
+    """
+    Apply video transformations using moviepy.
+
+    Returns:
+        None (writes to processed_path)
+    """
+    original_clip = VideoFileClip(original_path)
+    trim_duration = min(30, original_clip.duration)
+    clip = original_clip.subclipped(0, trim_duration)
+    clip = clip.resized(height=720)
+    watermark = (
+        TextClip(text="ANF Rising Stars Showcase", font_size=36, color="white")
+        .with_position(("center", "bottom"))
+        .with_duration(clip.duration)
+    )
+    final_clip = CompositeVideoClip([clip, watermark])
+
+    # Save the processed video
+    final_clip.write_videofile(processed_path, codec="libx264", audio_codec="aac")
+
+    # Clean up moviepy objects to free memory
+    final_clip.close()
+    clip.close()
+    original_clip.close()
+
+
+def _cleanup_temp_files(temp_original, temp_processed):
+    """Clean up temporary files if they exist."""
+    if temp_original and os.path.exists(temp_original):
+        try:
+            os.unlink(temp_original)
+        except Exception:
+            pass
+    if temp_processed and os.path.exists(temp_processed):
+        try:
+            os.unlink(temp_processed)
+        except Exception:
+            pass
+
+
 @celery_app.task(bind=True, max_retries=3)
 def process_video(self, video_id: str):
     """Process video task with proper database session management
@@ -73,7 +152,6 @@ def process_video(self, video_id: str):
     For local: Processes directly on disk
     """
 
-    # Create database session for Celery task
     db = SessionLocal()
     temp_original = None
     temp_processed = None
@@ -88,60 +166,17 @@ def process_video(self, video_id: str):
         video.status = "processing"
         db.commit()
 
-        # Handle file access based on storage backend
-        if settings.STORAGE_BACKEND == "s3":
-            # S3: Download to temp files for processing
-            with tempfile.NamedTemporaryFile(
-                delete=False, suffix=".mp4"
-            ) as temp_orig, tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as temp_proc:
-                temp_original = temp_orig.name
-                temp_processed = temp_proc.name
-
-                # Download original from S3
-                original_data = storage.download_file(video.original_file_path)
-                temp_orig.write(original_data)
-                temp_orig.flush()
-
-            container_original_path = temp_original
-            container_processed_path = temp_processed
-        else:
-            # Local: Use resolve_container_path for local filesystem
-            container_original_path = resolve_container_path(
-                video.original_file_path, settings.APP_BASE_DIR
-            )
-
-            # Validate file permissions
-            if not os.access(container_original_path, os.R_OK):
-                raise PermissionError(f"Cannot read original video file: {container_original_path}")
-
-            # Ensure processed file directory exists
-            container_processed_path = ensure_directory_exists(
-                video.processed_file_path, settings.APP_BASE_DIR
-            )
-
-        # Process the video using moviepy
-        original_clip = VideoFileClip(container_original_path)
-        trim_duration = min(30, original_clip.duration)
-        clip = original_clip.subclipped(0, trim_duration)
-        clip = clip.resized(height=720)
-        watermark = (
-            TextClip(text="ANF Rising Stars Showcase", font_size=36, color="white")
-            .with_position(("center", "bottom"))
-            .with_duration(clip.duration)
+        # Setup file paths based on storage backend
+        original_path, processed_path, temp_original, temp_processed = _setup_file_paths(
+            video, settings
         )
-        final_clip = CompositeVideoClip([clip, watermark])
 
-        # Save the processed video
-        final_clip.write_videofile(container_processed_path, codec="libx264", audio_codec="aac")
-
-        # Clean up moviepy objects to free memory
-        final_clip.close()
-        clip.close()
-        original_clip.close()
+        # Process the video
+        _process_video_file(original_path, processed_path)
 
         # Upload processed video if using S3
         if settings.STORAGE_BACKEND == "s3":
-            with open(container_processed_path, "rb") as f:
+            with open(processed_path, "rb") as f:
                 processed_data = f.read()
             storage.upload_file(processed_data, video.processed_file_path)
 
@@ -166,17 +201,5 @@ def process_video(self, video_id: str):
         raise self.retry(exc=e, countdown=60, max_retries=3)
 
     finally:
-        # Clean up temp files if using S3
-        if temp_original and os.path.exists(temp_original):
-            try:
-                os.unlink(temp_original)
-            except Exception:
-                pass
-        if temp_processed and os.path.exists(temp_processed):
-            try:
-                os.unlink(temp_processed)
-            except Exception:
-                pass
-
-        # Always close the database session
+        _cleanup_temp_files(temp_original, temp_processed)
         db.close()
