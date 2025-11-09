@@ -768,3 +768,260 @@ class TestDeleteVideoFile:
         assert deleted is False
         assert not_found is False
         mock_storage.delete_file.assert_called_once_with("/path/to/file.mp4")
+
+
+class TestPresignedURLs:
+    """Tests for S3 presigned URL generation"""
+
+    @patch("app.api.routes.videos.settings")
+    @patch("app.api.routes.videos.storage")
+    def test_list_videos_with_s3_presigned_urls(self, mock_storage, mock_settings, client: TestClient, db):
+        """Test list_user_videos generates presigned URLs for S3"""
+        mock_settings.STORAGE_BACKEND = "s3"
+        mock_storage.get_presigned_url.return_value = "https://s3.amazonaws.com/presigned-url"
+
+        # Create user
+        user = models.User(
+            first_name="Test",
+            last_name="User",
+            email="test@example.com",
+            password="password",
+            city="City",
+            country="Country",
+        )
+        db.add(user)
+        db.commit()
+
+        # Create processed video
+        video = models.Video(
+            user_id=user.id,
+            title="Test Video",
+            original_file_path="uploads/test.mp4",
+            processed_file_path="processed/test.mp4",
+            status="processed",
+        )
+        db.add(video)
+        db.commit()
+
+        token = create_access_token(data={"sub": str(user.id)})
+
+        response = client.get(
+            "/api/videos/",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        videos = response.json()
+        assert len(videos) == 1
+        assert videos[0]["processed_url"] == "https://s3.amazonaws.com/presigned-url"
+        mock_storage.get_presigned_url.assert_called_once()
+
+    @patch("app.api.routes.videos.settings")
+    @patch("app.api.routes.videos.storage")
+    def test_list_videos_s3_presigned_url_error(self, mock_storage, mock_settings, client: TestClient, db):
+        """Test list_user_videos handles presigned URL generation errors"""
+        mock_settings.STORAGE_BACKEND = "s3"
+        mock_storage.get_presigned_url.side_effect = Exception("S3 Error")
+
+        # Create user
+        user = models.User(
+            first_name="Test",
+            last_name="User",
+            email="test@example.com",
+            password="password",
+            city="City",
+            country="Country",
+        )
+        db.add(user)
+        db.commit()
+
+        # Create processed video
+        video = models.Video(
+            user_id=user.id,
+            title="Test Video",
+            original_file_path="uploads/test.mp4",
+            processed_file_path="processed/test.mp4",
+            status="processed",
+        )
+        db.add(video)
+        db.commit()
+
+        token = create_access_token(data={"sub": str(user.id)})
+
+        response = client.get(
+            "/api/videos/",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        videos = response.json()
+        assert len(videos) == 1
+        assert videos[0]["processed_url"] is None
+
+    @patch("app.api.routes.videos.settings")
+    def test_list_videos_with_local_storage(self, mock_settings, client: TestClient, db):
+        """Test list_user_videos uses regular URLs for local storage"""
+        mock_settings.STORAGE_BACKEND = "local"
+
+        # Create user
+        user = models.User(
+            first_name="Test",
+            last_name="User",
+            email="test@example.com",
+            password="password",
+            city="City",
+            country="Country",
+        )
+        db.add(user)
+        db.commit()
+
+        # Create processed video
+        video = models.Video(
+            user_id=user.id,
+            title="Test Video",
+            original_file_path="uploads/test.mp4",
+            processed_file_path="processed/test.mp4",
+            status="processed",
+        )
+        db.add(video)
+        db.commit()
+
+        token = create_access_token(data={"sub": str(user.id)})
+
+        response = client.get(
+            "/api/videos/",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        videos = response.json()
+        assert len(videos) == 1
+        assert f"https://anb.com/videos/processed/{video.id}.mp4" in videos[0]["processed_url"]
+
+    @patch("app.api.routes.videos.settings")
+    @patch("app.api.routes.videos.storage")
+    def test_get_video_detail_with_s3_presigned_urls(self, mock_storage, mock_settings, client: TestClient, db):
+        """Test get_video_detail generates presigned URLs for S3"""
+        mock_settings.STORAGE_BACKEND = "s3"
+        mock_storage.get_presigned_url.side_effect = [
+            "https://s3.amazonaws.com/original-presigned-url",
+            "https://s3.amazonaws.com/processed-presigned-url"
+        ]
+
+        # Create user
+        user = models.User(
+            first_name="Test",
+            last_name="User",
+            email="test@example.com",
+            password="password",
+            city="City",
+            country="Country",
+        )
+        db.add(user)
+        db.commit()
+
+        # Create processed video
+        video = models.Video(
+            user_id=user.id,
+            title="Test Video",
+            original_file_path="uploads/test.mp4",
+            processed_file_path="processed/test.mp4",
+            status="processed",
+        )
+        db.add(video)
+        db.commit()
+
+        token = create_access_token(data={"sub": str(user.id)})
+
+        response = client.get(
+            f"/api/videos/{video.id}",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        video_data = response.json()
+        assert video_data["original_url"] == "https://s3.amazonaws.com/original-presigned-url"
+        assert video_data["processed_url"] == "https://s3.amazonaws.com/processed-presigned-url"
+        assert mock_storage.get_presigned_url.call_count == 2
+
+    @patch("app.api.routes.videos.settings")
+    @patch("app.api.routes.videos.storage")
+    def test_get_video_detail_s3_presigned_url_error(self, mock_storage, mock_settings, client: TestClient, db):
+        """Test get_video_detail handles presigned URL generation errors"""
+        mock_settings.STORAGE_BACKEND = "s3"
+        mock_storage.get_presigned_url.side_effect = Exception("S3 Error")
+
+        # Create user
+        user = models.User(
+            first_name="Test",
+            last_name="User",
+            email="test@example.com",
+            password="password",
+            city="City",
+            country="Country",
+        )
+        db.add(user)
+        db.commit()
+
+        # Create processed video
+        video = models.Video(
+            user_id=user.id,
+            title="Test Video",
+            original_file_path="uploads/test.mp4",
+            processed_file_path="processed/test.mp4",
+            status="processed",
+        )
+        db.add(video)
+        db.commit()
+
+        token = create_access_token(data={"sub": str(user.id)})
+
+        response = client.get(
+            f"/api/videos/{video.id}",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        video_data = response.json()
+        assert video_data["original_url"] is None
+        assert video_data["processed_url"] is None
+
+    @patch("app.api.routes.videos.settings")
+    def test_get_video_detail_with_local_storage(self, mock_settings, client: TestClient, db):
+        """Test get_video_detail uses regular URLs for local storage"""
+        mock_settings.STORAGE_BACKEND = "local"
+
+        # Create user
+        user = models.User(
+            first_name="Test",
+            last_name="User",
+            email="test@example.com",
+            password="password",
+            city="City",
+            country="Country",
+        )
+        db.add(user)
+        db.commit()
+
+        # Create processed video
+        video = models.Video(
+            user_id=user.id,
+            title="Test Video",
+            original_file_path="uploads/test.mp4",
+            processed_file_path="processed/test.mp4",
+            status="processed",
+        )
+        db.add(video)
+        db.commit()
+
+        token = create_access_token(data={"sub": str(user.id)})
+
+        response = client.get(
+            f"/api/videos/{video.id}",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        video_data = response.json()
+        assert f"https://anb.com/uploads/{video.id}.mp4" in video_data["original_url"]
+        assert f"https://anb.com/processed/{video.id}.mp4" in video_data["processed_url"]
