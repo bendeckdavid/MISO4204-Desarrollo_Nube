@@ -1,6 +1,6 @@
 """Tests for video management endpoints"""
 import io
-from unittest.mock import patch, MagicMock, AsyncMock
+from unittest.mock import patch
 from fastapi import status
 from fastapi.testclient import TestClient
 
