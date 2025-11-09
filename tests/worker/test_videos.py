@@ -110,7 +110,6 @@ class TestSetupFilePaths:
     def test_setup_file_paths_s3(self, mock_temp, mock_storage):
         """Test file paths setup for S3 storage"""
         from app.worker.videos import _setup_file_paths
-        from app.db import models
         from unittest.mock import Mock, MagicMock
 
         # Mock temp files
@@ -128,7 +127,7 @@ class TestSetupFilePaths:
         mock_storage.download_file.return_value = b"video data"
 
         # Mock video and settings
-        video = Mock(spec=models.Video)
+        video = Mock()
         video.original_file_path = "uploads/test.mp4"
 
         settings_mock = Mock()
@@ -149,11 +148,10 @@ class TestSetupFilePaths:
     def test_setup_file_paths_local(self, mock_access, mock_resolve, mock_ensure):
         """Test file paths setup for local storage"""
         from app.worker.videos import _setup_file_paths
-        from app.db import models
         from unittest.mock import Mock
 
         # Mock video and settings
-        video = Mock(spec=models.Video)
+        video = Mock()
         video.original_file_path = "/app/media/uploads/test.mp4"
         video.processed_file_path = "/app/media/processed/test.mp4"
 
@@ -178,10 +176,9 @@ class TestSetupFilePaths:
     def test_setup_file_paths_local_permission_error(self, mock_access, mock_resolve):
         """Test permission error for local storage"""
         from app.worker.videos import _setup_file_paths
-        from app.db import models
         from unittest.mock import Mock
 
-        video = Mock(spec=models.Video)
+        video = Mock()
         video.original_file_path = "/app/media/uploads/test.mp4"
 
         settings_mock = Mock()
@@ -284,7 +281,6 @@ class TestProcessVideoTask:
     ):
         """Test successful video processing with S3"""
         from app.worker.videos import process_video
-        from app.db import models
         from unittest.mock import Mock, MagicMock, mock_open
 
         # Mock database session
@@ -292,7 +288,7 @@ class TestProcessVideoTask:
         mock_session.return_value = db_mock
 
         # Mock video
-        video_mock = Mock(spec=models.Video)
+        video_mock = Mock()
         video_mock.id = "test-id"
         video_mock.status = "pending"
         video_mock.processed_file_path = "processed/test.mp4"
@@ -331,7 +327,6 @@ class TestProcessVideoTask:
     ):
         """Test successful video processing with local storage"""
         from app.worker.videos import process_video
-        from app.db import models
         from unittest.mock import Mock, MagicMock
 
         # Mock database session
@@ -339,7 +334,7 @@ class TestProcessVideoTask:
         mock_session.return_value = db_mock
 
         # Mock video
-        video_mock = Mock(spec=models.Video)
+        video_mock = Mock()
         video_mock.id = "test-id"
         video_mock.status = "pending"
         db_mock.query().filter().first.return_value = video_mock
@@ -384,7 +379,6 @@ class TestProcessVideoTask:
     def test_process_video_error_with_retry(self, mock_session, mock_setup, mock_cleanup):
         """Test video processing error triggers retry"""
         from app.worker.videos import process_video
-        from app.db import models
         from unittest.mock import Mock, MagicMock
 
         # Mock database session
@@ -392,7 +386,7 @@ class TestProcessVideoTask:
         mock_session.return_value = db_mock
 
         # Mock video
-        video_mock = Mock(spec=models.Video)
+        video_mock = Mock()
         video_mock.id = "test-id"
         video_mock.status = "pending"
         db_mock.query().filter().first.return_value = video_mock
