@@ -117,7 +117,19 @@ def list_user_videos(
             video_data["processed_at"] = (
                 video.updated_at.isoformat() if hasattr(video, "updated_at") else None
             )
-            video_data["processed_url"] = f"https://anb.com/videos/processed/{video.id}.mp4"
+
+            # Generate presigned URL for S3, or regular URL for local storage
+            if settings.STORAGE_BACKEND == "s3":
+                try:
+                    # Generate presigned URL valid for 1 hour
+                    video_data["processed_url"] = storage.get_presigned_url(
+                        video.processed_file_path, expiration=3600
+                    )
+                except Exception as e:
+                    print(f"Error generating presigned URL: {e}")
+                    video_data["processed_url"] = None
+            else:
+                video_data["processed_url"] = f"https://anb.com/videos/processed/{video.id}.mp4"
 
         response.append(video_data)
 
@@ -143,6 +155,27 @@ def get_video_detail(
     if video.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Forbidden: this video does not belong to you")
 
+    # Generate URLs based on storage backend
+    original_url = None
+    processed_url = None
+
+    if settings.STORAGE_BACKEND == "s3":
+        try:
+            # Generate presigned URLs for S3 (valid for 1 hour)
+            if video.original_file_path:
+                original_url = storage.get_presigned_url(video.original_file_path, expiration=3600)
+            if video.status == "processed" and video.processed_file_path:
+                processed_url = storage.get_presigned_url(
+                    video.processed_file_path, expiration=3600
+                )
+        except Exception as e:
+            print(f"Error generating presigned URLs: {e}")
+    else:
+        # Local storage URLs
+        original_url = f"https://anb.com/uploads/{video.id}.mp4"
+        if video.status == "processed":
+            processed_url = f"https://anb.com/processed/{video.id}.mp4"
+
     # Crear la respuesta
     return {
         "video_id": str(video.id),
@@ -150,10 +183,8 @@ def get_video_detail(
         "status": video.status,
         "uploaded_at": video.created_at.isoformat() if hasattr(video, "created_at") else None,
         "processed_at": video.updated_at.isoformat() if hasattr(video, "updated_at") else None,
-        "original_url": f"https://anb.com/uploads/{video.id}.mp4",
-        "processed_url": f"https://anb.com/processed/{video.id}.mp4"
-        if video.status == "processed"
-        else None,
+        "original_url": original_url,
+        "processed_url": processed_url,
         "votes": video.vote_count,
     }
 
