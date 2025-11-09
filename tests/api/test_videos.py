@@ -12,28 +12,18 @@ class TestVideoUpload:
     """Tests for video upload endpoint"""
 
     @patch("app.api.routes.videos.process_video")
-    @patch("app.api.routes.videos.os.path.exists")
-    @patch("app.api.routes.videos.os.path.getsize")
-    @patch("app.api.routes.videos.os.makedirs")
-    @patch("app.api.routes.videos.aiofiles.open", create=True)
+    @patch("app.api.routes.videos.storage")
     def test_upload_video_success(
         self,
-        mock_aiofiles_open,
-        mock_makedirs,
-        mock_getsize,
-        mock_exists,
+        mock_storage,
         mock_process_video,
         client: TestClient,
         db,
     ):
         """Test successful video upload"""
-        # Mock file operations
-        mock_exists.return_value = True
-        mock_getsize.return_value = 1024
-        mock_file = MagicMock()
-        mock_file.write = AsyncMock()
-        mock_aiofiles_open.return_value.__aenter__.return_value = mock_file
-        mock_aiofiles_open.return_value.__aexit__.return_value = None
+        # Mock storage operations
+        mock_storage.upload_file.return_value = "uploads/test_video.mp4"
+        mock_storage.file_exists.return_value = True
 
         # Create and login user
         user = models.User(
@@ -158,25 +148,18 @@ class TestVideoUpload:
         ]
 
     @patch("app.api.routes.videos.process_video")
-    @patch("app.api.routes.videos.os.path.exists")
-    @patch("app.api.routes.videos.os.makedirs")
-    @patch("app.api.routes.videos.aiofiles.open", create=True)
+    @patch("app.api.routes.videos.storage")
     def test_upload_video_file_save_error(
         self,
-        mock_aiofiles_open,
-        mock_makedirs,
-        mock_exists,
+        mock_storage,
         mock_process_video,
         client: TestClient,
         db,
     ):
         """Test video upload when file save fails"""
-        # Mock file operations to simulate file not being saved
-        mock_exists.return_value = False  # File doesn't exist after save
-        mock_file = MagicMock()
-        mock_file.write = AsyncMock()
-        mock_aiofiles_open.return_value.__aenter__.return_value = mock_file
-        mock_aiofiles_open.return_value.__aexit__.return_value = None
+        # Mock storage operations to simulate file not being saved
+        mock_storage.upload_file.return_value = "uploads/test_video.mp4"
+        mock_storage.file_exists.return_value = False  # File doesn't exist after save
 
         user = models.User(
             first_name="Juan",
@@ -503,10 +486,9 @@ class TestDeleteVideo:
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
-    @patch("app.api.routes.videos.os.path.exists")
-    @patch("app.api.routes.videos.os.remove")
+    @patch("app.api.routes.videos.storage")
     def test_delete_video_with_processed_file(
-        self, mock_remove, mock_exists, client: TestClient, db
+        self, mock_storage, client: TestClient, db
     ):
         """Test deleting video with processed file that exists"""
         user = models.User(
@@ -532,8 +514,8 @@ class TestDeleteVideo:
         db.commit()
         db.refresh(video)
 
-        # Mock both files exist
-        mock_exists.return_value = True
+        # Mock both files can be deleted
+        mock_storage.delete_file.return_value = True
 
         token = create_access_token(data={"sub": str(user.id)})
 
@@ -544,7 +526,7 @@ class TestDeleteVideo:
 
         assert response.status_code == status.HTTP_200_OK
         # Verify both files were attempted to be removed
-        assert mock_remove.call_count == 2
+        assert mock_storage.delete_file.call_count == 2
 
     def test_delete_video_with_votes(self, client: TestClient, db):
         """Test deleting video that has votes"""
@@ -587,10 +569,9 @@ class TestDeleteVideo:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "vote" in response.json()["detail"].lower()
 
-    @patch("app.api.routes.videos.os.path.exists")
-    @patch("app.api.routes.videos.os.remove")
+    @patch("app.api.routes.videos.storage")
     def test_delete_video_file_removal_error(
-        self, mock_remove, mock_exists, client: TestClient, db
+        self, mock_storage, client: TestClient, db
     ):
         """Test deleting video when file removal fails"""
         user = models.User(
@@ -616,9 +597,8 @@ class TestDeleteVideo:
         db.commit()
         db.refresh(video)
 
-        # Mock files exist but removal fails
-        mock_exists.return_value = True
-        mock_remove.side_effect = Exception("Permission denied")
+        # Mock file removal returns False (simulating failure)
+        mock_storage.delete_file.return_value = False
 
         token = create_access_token(data={"sub": str(user.id)})
 
@@ -629,5 +609,5 @@ class TestDeleteVideo:
 
         # Should still succeed even if file removal fails
         assert response.status_code == status.HTTP_200_OK
-        # Verify remove was attempted
-        assert mock_remove.call_count >= 1
+        # Verify delete was attempted
+        assert mock_storage.delete_file.call_count >= 1
