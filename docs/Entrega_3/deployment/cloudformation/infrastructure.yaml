@@ -950,12 +950,11 @@ Resources:
           After=network.target
 
           [Service]
-          Type=forking
+          Type=exec
           User=root
           WorkingDirectory=/app
           EnvironmentFile=/app/.env
-          ExecStart=/bin/bash -c 'source /app/.env && celery -A app.worker.celery_app worker --loglevel=info --concurrency=2 --logfile=/var/log/celery-worker.log --detach'
-          ExecStop=/bin/bash -c 'pkill -f "celery worker"'
+          ExecStart=/bin/bash -c 'source /app/.env && exec celery -A app.worker.celery_app worker --loglevel=info --concurrency=2'
           Restart=always
           RestartSec=10
           StandardOutput=journal
