@@ -613,7 +613,8 @@ Resources:
             SECRET_KEY=$SECRET_KEY
             ACCESS_TOKEN_EXPIRE_MINUTES=1440
 
-            # Celery (using first web server as Redis host - will be updated)
+            # Celery - Web servers use local Redis for task queuing
+            # Worker will connect to this Redis instance
             CELERY_BROKER_URL=redis://localhost:6379/0
             CELERY_RESULT_BACKEND=redis://localhost:6379/0
 
@@ -713,7 +714,7 @@ Resources:
         LaunchTemplateId: !Ref WebServerLaunchTemplate
         Version: !GetAtt WebServerLaunchTemplate.LatestVersionNumber
       MinSize: 1
-      MaxSize: 3
+      MaxSize: 5
       DesiredCapacity: 1
       HealthCheckType: ELB
       HealthCheckGracePeriod: 300
@@ -739,7 +740,7 @@ Resources:
       TargetTrackingConfiguration:
         PredefinedMetricSpecification:
           PredefinedMetricType: ASGAverageCPUUtilization
-        TargetValue: 10.0
+        TargetValue: 75.0
 
   #############################################################################
   # Worker Instance
@@ -902,19 +903,24 @@ Resources:
 
           # Get Redis host (first web server private IP)
           # Note: In production, use ElastiCache for Redis
+          # Note: Web servers run Redis locally and worker connects to one of them
+          echo "Waiting 60 seconds for web servers to be available..."
+          sleep 60
+
           REDIS_HOST=$(aws ec2 describe-instances \
             --region ${AWS::Region} \
-            --filters "Name=tag:Name,Values=${ProjectName}-web-asg" \
+            --filters "Name=tag:aws:autoscaling:groupName,Values=${ProjectName}-web-asg" \
                       "Name=instance-state-name,Values=running" \
             --query 'Reservations[0].Instances[0].PrivateIpAddress' \
             --output text)
 
           if [ "$REDIS_HOST" = "None" ] || [ -z "$REDIS_HOST" ]; then
-            echo "ERROR: Could not find Redis host"
+            echo "ERROR: Could not find web server instance for Redis"
+            echo "Worker will use localhost (this will NOT work for processing)"
             REDIS_HOST="localhost"
           fi
 
-          echo "Using Redis host: $REDIS_HOST"
+          echo "Using Redis host from web server: $REDIS_HOST"
 
           # Generate same SECRET_KEY (for JWT verification)
           SECRET_KEY=$(openssl rand -hex 32)
