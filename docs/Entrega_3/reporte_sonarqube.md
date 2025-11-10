@@ -429,16 +429,6 @@ La integración con S3 fue desarrollada desde el inicio con tests, siguiendo alg
 
 4. **Tests como primera clase**: Se agregaron más de 500 líneas de tests bien estructurados que cubren no solo los happy paths, sino también casos de error, edge cases y manejo de recursos temporales. Los tests ahora sirven como documentación y red de seguridad para refactoring futuro.
 
-### Áreas de Mejora Futuras
-
-1. **Completar cobertura del worker tasks**: El módulo `app/worker/tasks.py` está en ~85%. Falta cubrir el caso de excepción anidada (líneas 16-17). Aunque intentamos cubrirlo, la complejidad de mockear el comportamiento de Celery requiere más investigación. No es crítico, pero sería bueno alcanzar el 100%.
-
-2. **Corregir bugs de reliability**: Los 3 bugs existentes (uso de API síncrona en async y datetime.utcnow deprecado) no afectan funcionalidad, pero deberían corregirse en la siguiente iteración. La migración a `aiofiles` y `datetime.now(UTC)` es directa y eliminaría todos los bugs pendientes.
-
-3. **Refactorizar code smells**: Los 2 code smells restantes son los mismos bugs de datetime. Una vez corregidos, el proyecto quedaría sin code smells.
-
-4. **Expandir tests de integración**: Aunque tenemos buena cobertura unitaria, sería valioso agregar tests de integración end-to-end que prueben flujos completos como: subir video → procesar → descargar desde S3.
-
 ### Reflexión Final
 
 Esta entrega nos enseñó que la calidad del código no es algo que se logra una vez y se olvida. Requiere atención constante. Cuando en la Entrega 2 priorizamos el despliegue sobre los tests, el coverage bajó a 78.4%. En esta entrega, al priorizar la calidad, no solo recuperamos el coverage sino que lo mejoramos significativamente.
