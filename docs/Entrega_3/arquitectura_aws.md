@@ -470,7 +470,7 @@ En el entorno de AWS Academy, **no podemos crear roles personalizados de IAM** d
 | Aspecto | Entrega 2 (AWS Manual) | Entrega 3 (IaC + Auto Scaling) |
 |---------|------------------------|--------------------------------|
 | **Despliegue** | Scripts bash manuales (3 EC2s) | CloudFormation (IaC) |
-| **Web Servers** | 1 instancia EC2 fija | Auto Scaling Group (1-3 instancias) |
+| **Web Servers** | 1 instancia EC2 fija | Auto Scaling Group (1-5 instancias) |
 | **Balanceo de carga** | Sin balanceador (IP directa) | Application Load Balancer |
 | **Almacenamiento** | NFS en EC2 dedicado (File Server) | Amazon S3 |
 | **Seguridad de acceso** | Variables de entorno + SSH keys | IAM Roles (sin credenciales estáticas) |
@@ -878,7 +878,7 @@ sudo journalctl -u celery --since "1 hour ago"
 | Métrica | Entrega 1 (Docker) | Entrega 2 (AWS Manual) | Entrega 3 (IaC + Auto Scaling) |
 |---------|-------------------|------------------------|-------------------------------|
 | **Tiempo de despliegue** | 5 min | ~30 min | ~15 min |
-| **Instancias EC2** | 0 (local) | 3 fijas | 1-3 dinámicas |
+| **Instancias EC2** | 0 (local) | 3 fijas | 1-5 dinámicas |
 | **Reproducibilidad** | Alta (docker-compose) | Media (scripts) | Alta (CloudFormation) |
 | **Escalabilidad** | No | Manual | Automática |
 | **Costo mensual** | $0 | ~$60 | ~$35-75 (según carga) |
