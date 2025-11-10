@@ -467,6 +467,13 @@ La infraestructura de Entrega 3 con Auto Scaling demuestra:
 - **Log completo**: [escenario2_minimo_output.log](results-entrega3/escenario2_minimo_output.log)
 - **Gráficas del escenario**: [graficas_escenario2.png](results-entrega3/graficas_escenario2.png)
 
+**Evidencias:**
+
+![Escenario AutoScaling](results-entrega3/escenario1_autoscaling.png)
+![Activity](results-entrega3/activity.png)
+![Desired capacity](results-entrega3/desired_capacity.png)
+
+
 ### 6.3 Infraestructura
 
 - **CloudFormation template**: [infrastructure.yaml](../docs/Entrega_3/deployment/cloudformation/infrastructure.yaml)
