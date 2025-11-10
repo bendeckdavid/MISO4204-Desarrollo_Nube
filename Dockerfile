@@ -18,9 +18,9 @@ WORKDIR /app
 # Copy Poetry files
 COPY pyproject.toml README.md ./
 
-# Install dependencies
+# Install dependencies (without installing the package itself)
 RUN poetry config virtualenvs.create false \
-    && poetry install --no-interaction --no-ansi
+    && poetry install --no-root --no-interaction --no-ansi
 
 # Copy application code
 COPY . .

@@ -1,6 +1,9 @@
-# ANB Rising Stars Showcase API
+# ANB Rising Stars Showcase API - Entrega 3
 
-API para la gestión de videos de artistas emergentes con sistema de votación y rankings. Proyecto desarrollado con FastAPI, PostgreSQL, Celery, Redis y desplegado en AWS para el curso MISO4204 - Desarrollo en la Nube.
+API para la gestión de videos de artistas emergentes con sistema de votación y rankings. **Entrega 3** implementa una arquitectura escalable en AWS con Auto Scaling, Application Load Balancer, Amazon S3 y CloudFormation.
+
+**Proyecto:** MISO4204 - Desarrollo en la Nube
+**Universidad:** Universidad de los Andes
 
 ---
 
@@ -8,115 +11,156 @@ API para la gestión de videos de artistas emergentes con sistema de votación y
 
 **Link del video:** [Ver video en OneDrive](https://uniandes-my.sharepoint.com/:v:/g/personal/o_saraza_uniandes_edu_co/EU4jBLJmGHxBk3xY04vv0J4Bb_FN3VYcN4PVtjharFzehQ?nav=eyJyZWZlcnJhbEluZm8iOnsicmVmZXJyYWxBcHAiOiJPbmVEcml2ZUZvckJ1c2luZXNzIiwicmVmZXJyYWxBcHBQbGF0Zm9ybSI6IldlYiIsInJlZmVycmFsTW9kZSI6InZpZXciLCJyZWZlcnJhbFZpZXciOiJNeUZpbGVzTGlua0NvcHkifX0&e=T4RQfW)
 
-> Video demostrativo del funcionamiento de la aplicación desplegada en AWS, mostrando la arquitectura distribuida, pruebas de carga y análisis de capacidad.
-Recuerde que para ver el video necesita una cuenta uniandes.
+> Video demostrativo del funcionamiento de la aplicación desplegada en AWS con Auto Scaling Group, pruebas de carga y análisis de capacidad.
 
 ---
 
-## 📢 Entrega 2 - Despliegue en AWS
+## 📊 Arquitectura de Entrega 3
 
-La aplicación ha sido migrada exitosamente a **Amazon Web Services (AWS)** con una arquitectura distribuida en múltiples instancias EC2 y servicios administrados.
-
-### Arquitectura Desplegada
+### Arquitectura Escalable en AWS
 
 ```
-Internet → Web Server (EC2) → Redis
-              ↓
-         [VPC 10.0.0.0/16]
-              ↓
-    ┌─────────┼─────────┐
-    ↓         ↓         ↓
-File Server  RDS     Worker (EC2)
-  (NFS)   (Postgres)  (Celery)
+                    Internet
+                        ↓
+            ┌───────────────────────┐
+            │ Application Load      │
+            │ Balancer (ALB)        │
+            └───────────┬───────────┘
+                        │
+        ┌───────────────┼───────────────┐
+        │    Auto Scaling Group         │
+        │  (1-5 instancias t3.small)    │
+        │                               │
+        │  ┌──────┐  ┌──────┐  ┌──────┐│
+        │  │ Web  │  │ Web  │  │ Web  ││
+        │  │  +   │  │  +   │  │  +   ││
+        │  │Redis │  │Redis │  │Redis ││
+        │  └──┬───┘  └──┬───┘  └──┬───┘│
+        └─────┼─────────┼─────────┼─────┘
+              │         │         │
+              └─────────┼─────────┘
+                        │
+        ┌───────────────┼───────────────┐
+        │               ↓               │
+        │     ┌──────────────────┐      │
+        │     │ Worker (Celery)  │      │
+        │     │ Private Subnet   │      │
+        │     └─────────┬────────┘      │
+        │               │               │
+        ├───────────────┼───────────────┤
+        │               ↓               │
+        │  ┌─────────┐    ┌──────────┐ │
+        │  │   RDS   │    │ S3 Bucket│ │
+        │  │Postgres │    │  Videos  │ │
+        │  └─────────┘    └──────────┘ │
+        └───────────────────────────────┘
 ```
 
-**Componentes:**
-- **3 Instancias EC2 t3.small** (2 vCPU, 2 GiB RAM, 50 GiB cada una)
-  - Web Server: FastAPI + Gunicorn + Nginx + Redis
-  - Worker: Celery + FFmpeg para procesamiento de videos
-  - File Server: NFS para almacenamiento compartido
-- **Amazon RDS db.t3.micro**: PostgreSQL 16 (2 vCPU, 1 GiB RAM, 20 GiB)
-- **VPC personalizada**: 10.0.0.0/16 con 2 subnets públicas
-- **Security Groups**: Configurados con principio de mínimo privilegio
+### Componentes Principales
 
-### Documentación de Entrega 2
+| Componente | Descripción | Tipo de Instancia |
+|------------|-------------|-------------------|
+| **Application Load Balancer** | Distribuye tráfico HTTP/HTTPS entre instancias web | - |
+| **Auto Scaling Group** | Escala automáticamente de 1 a 5 instancias según CPU | t3.small |
+| **Web Servers** | FastAPI + Gunicorn + Nginx + Redis (local) | t3.small (Multi-AZ) |
+| **Worker** | Celery + moviepy para procesamiento de videos | t3.small (Private subnet) |
+| **Amazon RDS** | PostgreSQL 16 administrado | db.t3.micro |
+| **Amazon S3** | Almacenamiento escalable para videos | - |
+| **VPC Multi-AZ** | Red privada en 2 zonas de disponibilidad | 10.0.0.0/16 |
 
-📖 **[Arquitectura AWS](docs/Entrega_2/ARQUITECTURA_AWS.md)** - Diagramas completos, decisiones de diseño, y roadmap de escalabilidad
+### Mejoras vs Entregas Anteriores
 
-📖 **[Guía de Despliegue AWS](docs/Entrega_2/AWS_DEPLOYMENT.md)** - Paso a paso para recrear la infraestructura
+| Aspecto | Entrega 1 | Entrega 2 | Entrega 3 ✅ |
+|---------|-----------|-----------|-------------|
+| **Despliegue** | Docker local | 3 EC2 manuales | CloudFormation (IaC) |
+| **Load Balancing** | Nginx local | Ninguno | Application Load Balancer |
+| **Escalabilidad** | 1 contenedor | 1 instancia fija | Auto Scaling (1-5) |
+| **Almacenamiento** | Volumen Docker | NFS compartido | Amazon S3 |
+| **Alta Disponibilidad** | No | Single-AZ | Multi-AZ |
+| **Capacidad probada** | 5-10 usuarios | 10-20 usuarios | **150 usuarios concurrentes** |
 
 ---
 
-## 🚀 Características
+## 📖 Documentación de Entrega 3
 
-- ✅ **FastAPI** - Framework moderno y rápido para construir APIs
-- ✅ **Autenticación JWT** - Seguridad con tokens y bcrypt para contraseñas
-- ✅ **PostgreSQL** - Base de datos relacional con UUIDs como primary keys
-- ✅ **Procesamiento Asíncrono** - Celery + Redis para procesar videos en background
-- ✅ **FFmpeg** - Procesamiento de video (recorte a 30s, resize a 720p, logo)
-- ✅ **Docker Compose** - Orquestación de 5 contenedores
-- ✅ **Nginx** - Reverse proxy con load balancing
-- ✅ **Gunicorn** - 4 workers Uvicorn para alta concurrencia
-- ✅ **pytest** - Suite de tests completa con 79% de cobertura (40 tests)
-- ✅ **CI/CD** - Pipeline automatizado con GitHub Actions
-- ✅ **Postman Collection** - Colección completa con tests automatizados
+### Documentación Principal
 
-## 📋 Tabla de Contenidos
+| Documento | Descripción |
+|-----------|-------------|
+| **[Arquitectura AWS](docs/Entrega_3/arquitectura_aws.md)** | Arquitectura escalable completa con CloudFormation:<br>• Auto Scaling Group (1-5 instancias)<br>• Application Load Balancer<br>• Amazon S3 para videos<br>• Multi-AZ para alta disponibilidad<br>• Infraestructura como código<br>• Diagramas de arquitectura y flujos |
+| **[Pruebas de Carga](capacity-planning/pruebas_de_carga_entrega3.md)** | Pruebas de capacidad con k6:<br>• **Escenario 1:** Capa Web - 150 VUs, 40,287 requests, 39.46 req/s<br>• **Escenario 2:** Upload y Procesamiento - 100% éxito<br>• Análisis de Auto Scaling bajo carga<br>• Comparación con Entrega 2 (650% mejora de capacidad)<br>• Identificación de umbrales de operación<br>• Recomendaciones de escalabilidad |
+| **[Guía de Despliegue CloudFormation](docs/Entrega_3/deployment/README.md)** | Despliegue automatizado con CloudFormation:<br>• Stack de infraestructura completo<br>• Configuración de parámetros<br>• Variables de entorno y secretos<br>• Troubleshooting y validación<br>• Scripts de apoyo para pruebas |
+| **[Reporte SonarQube](docs/Entrega_3/reporte_sonarqube.md)** | Análisis de calidad actualizado:<br>• Quality Gate: PASSED<br>• 0 bugs, 0 vulnerabilidades<br>• Coverage: 98.8%<br>• Soporte para S3 y presigned URLs<br>• Tests actualizados para S3 |
 
-- [Inicio Rápido](#-inicio-rápido)
-- [Estructura del Proyecto](#-estructura-del-proyecto)
-- [Documentación](#-documentación)
-- [Video de Sustentación](#-video-de-sustentación)
-- [API Endpoints](#-api-endpoints)
-- [Ejemplos de Uso](#-ejemplos-de-uso)
-- [Tests](#-tests)
-- [Desarrollo](#-desarrollo)
-- [Despliegue](#-despliegue)
+### Infraestructura como Código
 
-## 🏃 Inicio Rápido
+- **[infrastructure.yaml](docs/Entrega_3/deployment/cloudformation/infrastructure.yaml)** - Template CloudFormation con:
+  - VPC Multi-AZ (10.0.0.0/16)
+  - Application Load Balancer
+  - Auto Scaling Group (1-5 instancias)
+  - Amazon RDS PostgreSQL
+  - S3 Bucket para videos
+  - Worker en subnet privada
+  - Security Groups y IAM Roles
+
+### Scripts de Pruebas de Carga
+
+Ubicados en [`capacity-planning/scripts-entrega3/`](capacity-planning/scripts-entrega3/):
+
+| Script | Descripción |
+|--------|-------------|
+| **[test_escenario1_capa_web.js](capacity-planning/scripts-entrega3/test_escenario1_capa_web.js)** | Test k6 para capa web (17 min, 5→150 VUs) |
+| **[test_escenario2_upload_videos.js](capacity-planning/scripts-entrega3/test_escenario2_upload_videos.js)** | Test k6 para upload y procesamiento (3 min, 2 VUs) |
+| **[graficas_escenario1.py](capacity-planning/scripts-entrega3/graficas_escenario1.py)** | Generación de gráficas Escenario 1 |
+| **[generar_graficas_escenario2.py](capacity-planning/scripts-entrega3/generar_graficas_escenario2.py)** | Generación de gráficas Escenario 2 |
+| **[setup_crear_usuarios_prueba.sh](capacity-planning/scripts-entrega3/setup_crear_usuarios_prueba.sh)** | Setup inicial de usuarios de prueba |
+| **[README.md](capacity-planning/scripts-entrega3/README.md)** | Guía completa de uso de scripts |
+
+---
+
+## 🚀 Prueba Local con Docker Compose
+
+Aunque la arquitectura principal está en AWS, puedes probar la aplicación localmente con Docker Compose.
 
 ### Prerrequisitos
 
 - Docker >= 20.10
 - Docker Compose >= 2.0
-- Python 3.12+ (solo para desarrollo local)
+- 8GB RAM disponible
+- 10GB espacio en disco
 
-### 1. Clonar y Configurar
+### Inicio Rápido
 
 ```bash
-git clone https://github.com/tu-usuario/MISO4204-Desarrollo_Nube.git
+# 1. Clonar el repositorio
+git clone https://github.com/bendeckdavid/MISO4204-Desarrollo_Nube.git
 cd MISO4204-Desarrollo_Nube
 
-# El archivo .env ya está configurado para desarrollo local
-# Puedes modificarlo si lo necesitas
-```
-
-### 2. Iniciar Servicios
-
-```bash
-# Construir e iniciar todos los servicios
+# 2. Reconstruir imágenes (incluye boto3 para S3)
+docker-compose down -v
 docker-compose build --no-cache
+
+# 3. Iniciar servicios
 docker-compose up -d
 
-# Esperar ~30 segundos para que todos los servicios estén listos
+# 4. Esperar ~30 segundos para que todos los servicios estén listos
 sleep 30
 
-# Verificar el estado de los servicios
+# 5. Verificar estado
 docker-compose ps
 ```
 
-Deberías ver:
-```
-     Name                   Command                  State                        Ports
------------------------------------------------------------------------------------------------------------
-fastapi_api      gunicorn app.main:app ...        Up             8000/tcp
-fastapi_db       docker-entrypoint.sh postgres    Up (healthy)   0.0.0.0:5433->5432/tcp
-fastapi_nginx    /docker-entrypoint.sh nginx ...  Up (healthy)   0.0.0.0:8080->80/tcp
-fastapi_redis    docker-entrypoint.sh redis ...   Up (healthy)   0.0.0.0:6380->6379/tcp
-fastapi_worker   celery -A app.worker.celery ...  Up             8000/tcp
-```
+### Servicios Locales
 
-### 3. Verificar Instalación
+| Servicio | Puerto | Descripción |
+|----------|--------|-------------|
+| **API** | - | FastAPI (4 workers Gunicorn) |
+| **Nginx** | 8080 | Reverse proxy y load balancer |
+| **PostgreSQL** | 5433 | Base de datos |
+| **Redis** | 6380 | Message broker para Celery |
+| **Worker** | - | Celery para procesamiento de videos |
+
+### Verificar Instalación
 
 ```bash
 # Health check
@@ -126,227 +170,37 @@ curl http://localhost:8080/health
 # {"status":"healthy","version":"1.0.0"}
 ```
 
-### 4. Acceder a la Documentación
+### Documentación Interactiva
 
 - **API Base URL**: http://localhost:8080
-- **Swagger UI (Interactiva)**: http://localhost:8080/docs
+- **Swagger UI**: http://localhost:8080/docs
 - **ReDoc**: http://localhost:8080/redoc
 
-## 📁 Estructura del Proyecto
+### Comandos Útiles
 
+```bash
+# Ver logs
+docker-compose logs -f api
+docker-compose logs -f worker
+
+# Reiniciar servicios
+docker-compose restart api worker
+
+# Detener todo
+docker-compose down
+
+# Limpiar todo (incluye volúmenes)
+docker-compose down -v
 ```
-MISO4204-Desarrollo_Nube/
-├── app/                                 # Código fuente de la aplicación
-│   ├── api/
-│   │   └── routes/
-│   │       ├── __init__.py
-│   │       ├── auth.py                  # Endpoints de autenticación
-│   │       ├── health.py                # Health check
-│   │       ├── videos.py                # Gestión de videos (CRUD)
-│   │       └── public.py                # Endpoints públicos (votos, rankings)
-│   ├── core/
-│   │   ├── __init__.py
-│   │   ├── config.py                    # Configuración con Pydantic Settings
-│   │   └── security.py                  # JWT token management
-│   ├── db/
-│   │   ├── __init__.py
-│   │   ├── base.py                      # Base model con UUID y timestamps
-│   │   ├── database.py                  # SQLAlchemy engine y session
-│   │   └── models.py                    # Modelos (User, Video, Vote)
-│   ├── schemas/
-│   │   ├── __init__.py
-│   │   ├── auth.py                      # Schemas de autenticación
-│   │   ├── video.py                     # Schemas de videos
-│   │   └── vote.py                      # Schemas de votos y rankings
-│   ├── worker/
-│   │   ├── __init__.py
-│   │   ├── celery_app.py                # Configuración de Celery
-│   │   └── tasks.py                     # Tareas asíncronas (procesamiento de video)
-│   └── main.py                          # Punto de entrada de FastAPI
-│
-├── tests/                               # Suite de tests
-│   ├── api/
-│   │   ├── test_auth.py                 # Tests de autenticación (15 tests)
-│   │   ├── test_videos.py               # Tests de videos (14 tests)
-│   │   ├── test_public.py               # Tests de endpoints públicos (9 tests)
-│   │   └── test_health.py               # Tests de health check (2 tests)
-│   └── conftest.py                      # Fixtures de pytest
-│
-├── docs/                                # Documentación del proyecto
-│   └── Entrega_1/
-│       ├── arquitectura.md              # Arquitectura completa del sistema
-│       ├── decisiones_diseno.md         # Decisiones arquitectónicas
-│       ├── modelo_datos.md              # Modelo de datos y relaciones
-│       ├── images/                      # Diagramas exportados
-│       │   ├── modelo_contexto.jpeg     # Diagrama C4 - Contexto
-│       │   ├── modelo_contenedores.png  # Diagrama C4 - Contenedores
-│       │   ├── modelo_secuencia.png     # Diagrama de secuencia
-│       │   └── modelo_relacional.jpeg   # Modelo relacional de BD
-│       └── pruebas_carga/
-│           └── reporte.md               # Resultados de pruebas de carga
-│
-├── collections/                         # Colección de Postman
-│   ├── postman_collection.json          # Colección con 9 endpoints + tests
-│   ├── postman_environment.json         # Variables de entorno
-│   └── README.md                        # Guía de uso con Newman CLI
-│
-├── scripts/
-│   └── load_data.py                     # Script para cargar datos de ejemplo
-│
-├── media/                               # Archivos de video (montado como volumen)
-│   ├── uploads/                         # Videos originales subidos
-│   └── processed/                       # Videos procesados
-│
-├── .env                                 # Variables de entorno
-├── .github/
-│   └── workflows/
-│       └── ci.yml                       # Pipeline de CI/CD
-├── docker-compose.yml                   # Orquestación de servicios
-├── Dockerfile                           # Imagen para API y Worker
-├── nginx.conf                           # Configuración de Nginx
-├── pyproject.toml                       # Dependencias con Poetry
-├── .pre-commit-config.yaml              # Hooks de pre-commit
-└── README.md                            # Este archivo
-```
-
-## 📚 Documentación
-
-### Entrega 2 - Despliegue en AWS
-
-Documentación completa de la migración a Amazon Web Services con arquitectura distribuida.
-
-| Documento | Descripción |
-|-----------|-------------|
-| **[Arquitectura AWS](docs/Entrega_2/arquitectura_aws.md)** | Documentación completa de la arquitectura desplegada en AWS:<br>• Diagramas de despliegue e infraestructura<br>• Diagramas de componentes y flujos<br>• Servicios AWS utilizados (EC2, RDS, VPC, Security Groups)<br>• Decisiones de diseño y justificaciones<br>• Cambios respecto a Entrega 1<br>• Consideraciones de seguridad<br>• Roadmap de escalabilidad (corto, mediano y largo plazo) |
-| **[Guía de Despliegue AWS](docs/Entrega_2/aws_deployment.md)** | Guía paso a paso para recrear el despliegue en AWS:<br>• Configuración de VPC y networking<br>• Security Groups con mínimo privilegio<br>• Creación de instancias EC2 (Web Server, Worker, File Server)<br>• Configuración de Amazon RDS PostgreSQL<br>• Scripts de automatización para cada componente<br>• Configuración de NFS para almacenamiento compartido<br>• Troubleshooting y solución de problemas comunes |
-| **[Reporte SonarQube](docs/Entrega_2/reporte_sonarqube.md)** | Análisis comparativo de calidad de código entre Entrega 1 y 2:<br>• Quality Gate: PASSED (mantenido)<br>• Métricas de calidad (bugs, vulnerabilidades, code smells)<br>• Coverage: 78.4% overall, 90% en código nuevo<br>• Análisis de issues pendientes y su justificación<br>• Conclusiones y áreas de mejora futuras<br>• Evolución del proyecto y logros principales |
-| **[Análisis de Capacidad](capacity-planning/pruebas_de_carga_entrega2.md)** | Pruebas de carga con Apache JMeter en 2 escenarios:<br>• **Escenario 1:** 10 usuarios, ramp-up 500s (carga moderada)<br>• **Escenario 2:** 20 usuarios, ramp-up 60s (carga alta)<br>• Análisis de rendimiento por endpoint<br>• Identificación de cuellos de botella (NFS principal)<br>• Plan de escalabilidad por fases<br>• Capacidad actual: 10-20 usuarios concurrentes |
-
-**Scripts de Despliegue Automatizado:**
-- [01-fileserver-setup.sh](deployment/ec2-setup/01-fileserver-setup.sh) - Configuración de NFS Server
-- [02-webserver-setup.sh](deployment/ec2-setup/02-webserver-setup.sh) - Configuración de FastAPI + Nginx + Redis
-- [03-worker-setup.sh](deployment/ec2-setup/03-worker-setup.sh) - Configuración de Celery Worker + FFmpeg
-
-### Entrega 1 - Desarrollo Local
-
-| Documento | Ubicación | Descripción |
-|-----------|-----------|-------------|
-| **Arquitectura del Sistema** | [docs/Entrega_1/arquitectura.md](docs/Entrega_1/arquitectura.md) | Documentación completa incluyendo:<br>• Diagramas C4 (Contexto y Contenedores)<br>• Diagramas de secuencia<br>• Decisiones de diseño<br>• Contratos de API<br>• Stack tecnológico |
-| **Decisiones de Diseño** | [docs/Entrega_1/decisiones_diseno.md](docs/Entrega_1/decisiones_diseno.md) | Decisiones arquitectónicas y justificaciones |
-| **Modelo de Datos** | [docs/Entrega_1/modelo_datos.md](docs/Entrega_1/modelo_datos.md) | Modelo relacional y relaciones entre entidades |
-| **Reporte SonarQube** | [docs/Entrega_1/reporte_sonarqube.md](docs/Entrega_1/reporte_sonarqube.md) | Análisis de calidad de código, cobertura, seguridad y mantenibilidad |
-| **Pruebas de Carga** | [docs/Entrega_1/pruebas_carga/reporte.md](docs/Entrega_1/pruebas_carga/reporte.md) | Resultados y análisis de pruebas de rendimiento local |
-| **Colección de Postman** | [collections/README.md](collections/README.md) | Guía completa para usar la colección con Postman y Newman |
-
-### Diagramas (Entrega 1)
-
-Todos los diagramas están disponibles como imágenes en [`docs/Entrega_1/images/`](docs/Entrega_1/images/):
-
-- **[Diagrama de Contexto (C4)](docs/Entrega_1/images/modelo_contexto.jpeg)** - Vista de alto nivel del sistema
-- **[Diagrama de Contenedores (C4)](docs/Entrega_1/images/modelo_contenedores.png)** - Arquitectura de contenedores
-- **[Diagrama de Secuencia](docs/Entrega_1/images/modelo_secuencia.png)** - Flujo de procesamiento de videos
-- **[Modelo Relacional](docs/Entrega_1/images/modelo_relacional.jpeg)** - Estructura de base de datos
-
-### Reporte de Calidad
-
-El proyecto incluye un análisis exhaustivo de calidad de código realizado con SonarQube:
-
-- **[Reporte SonarQube](docs/Entrega_1/reporte_sonarqube.md)** - Análisis completo de calidad, cobertura y seguridad
-  - Quality Gate: ✅ PASSED
-  - Code Coverage: 100%
-  - Code Duplications: 0.0%
-  - Security Rating: A
-  - Reliability Rating: C (3 minor issues)
-  - Maintainability Rating: A
-
----
-
-## 🎥 Video de Sustentación
-
-### Demostración del Proyecto
-
-A continuación se presenta el video de sustentación donde se demuestra el funcionamiento completo del sistema **ANB Rising Stars Showcase API**, incluyendo:
-
-- Arquitectura del sistema y decisiones de diseño
-- Demostración de endpoints de autenticación (registro y login)
-- Carga y procesamiento asíncrono de videos con Celery
-- Sistema de votación y rankings públicos
-- Análisis de cobertura de tests (79% pytest, 100% SonarQube)
-- Resultados de pruebas de carga con K6
-- Reporte de calidad de código con SonarQube
-
-### 📹 Enlace al Video
-
-> **[Aquí se colocará el enlace al video de sustentación]**
->
-> _Nota: El video será publicado próximamente_
-
-**Duración aproximada:** 15-20 minutos
-
-**Contenido del video:**
-1. Introducción al proyecto y objetivos (2 min)
-2. Arquitectura y stack tecnológico (3 min)
-3. Demostración de funcionalidades principales (8 min)
-   - Registro y autenticación de usuarios
-   - Upload y procesamiento de videos
-   - Votación por videos publicados
-   - Consulta de rankings por ciudad
-4. Métricas de calidad y testing (4 min)
-   - Cobertura de tests con pytest (79%, 40 tests)
-   - Análisis SonarQube (Quality Gate: Passed, Coverage: 100%)
-   - Pruebas de carga con K6
-5. Conclusiones y trabajo futuro (2 min)
-
-**Plataforma de visualización:** YouTube / Vimeo
 
 ---
 
 ## 🔌 API Endpoints
 
-### Resumen de Endpoints
-
-| Endpoint | Método | Auth | Descripción |
-|----------|--------|------|-------------|
-| `/health` | GET | No | Health check del servicio |
-| `/api/auth/signup` | POST | No | Registro de nuevo usuario |
-| `/api/auth/login` | POST | No | Login y obtención de JWT |
-| `/api/videos/upload` | POST | JWT | Subir video para procesamiento |
-| `/api/videos/` | GET | JWT | Listar mis videos |
-| `/api/videos/{video_id}` | GET | JWT | Obtener detalles de un video |
-| `/api/videos/{video_id}` | DELETE | JWT | Eliminar un video |
-| `/api/public/videos` | GET | No | Listar videos públicos |
-| `/api/public/videos/{video_id}/vote` | POST | JWT | Votar por un video |
-| `/api/public/rankings` | GET | No | Ver ranking de videos |
-
-### Base URL
-
-```
-http://localhost:8080
-```
-
-**Nota:** Todas las peticiones pasan por el proxy reverso de Nginx en el puerto 8080.
-
-## 💡 Ejemplos de Uso
-
-### 1. Health Check
+### Autenticación
 
 ```bash
-curl http://localhost:8080/health
-```
-
-**Respuesta:**
-```json
-{
-  "status": "healthy",
-  "version": "1.0.0"
-}
-```
-
----
-
-### 2. Registro de Usuario
-
-```bash
+# Registro de usuario
 curl -X POST http://localhost:8080/api/auth/signup \
   -H "Content-Type: application/json" \
   -d '{
@@ -358,29 +212,8 @@ curl -X POST http://localhost:8080/api/auth/signup \
     "city": "Bogota",
     "country": "Colombia"
   }'
-```
 
-**Respuesta (201 Created):**
-```json
-{
-  "id": "ec3fe238-8640-4649-8837-e1b2cfc19be8",
-  "first_name": "Carlos",
-  "last_name": "Martinez",
-  "email": "artist@example.com",
-  "city": "Bogota",
-  "country": "Colombia"
-}
-```
-
-**Errores posibles:**
-- `400` - Email ya registrado o contraseñas no coinciden
-- `422` - Error de validación (email inválido, contraseña corta, etc.)
-
----
-
-### 3. Login
-
-```bash
+# Login
 curl -X POST http://localhost:8080/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{
@@ -389,466 +222,319 @@ curl -X POST http://localhost:8080/api/auth/login \
   }'
 ```
 
-**Respuesta (200 OK):**
-```json
-{
-  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "token_type": "Bearer",
-  "expires_in": 3600
-}
-```
-
-**Guarda el `access_token` para usarlo en endpoints protegidos!**
-
----
-
-### 4. Subir Video (requiere JWT)
+### Gestión de Videos (requiere JWT)
 
 ```bash
-# Primero exporta el token
+# Guardar token
 export TOKEN="tu_access_token_aqui"
 
-# Subir video con archivo
-# El video debe existir si se prueba con curl
+# Subir video
 curl -X POST http://localhost:8080/api/videos/upload \
   -H "Authorization: Bearer $TOKEN" \
   -F "file=@/ruta/a/tu/video.mp4" \
   -F "title=Mi Video Musical" \
   -F "description=Una presentación increíble"
-```
 
-**Respuesta (202 Accepted):**
-```json
-{
-  "id": "a1b2c3d4-5678-90ab-cdef-1234567890ab",
-  "title": "Mi Video Musical",
-  "description": "Una presentación increíble",
-  "status": "processing",
-  "user_id": "ec3fe238-8640-4649-8837-e1b2cfc19be8",
-  "created_at": "2025-10-19T20:30:00"
-}
-```
-
-**Notas:**
-- El video se procesará de forma asíncrona con Celery
-- Formatos aceptados: MP4, AVI, MOV
-- Tamaño máximo: 500MB
-- El video será recortado a 30 segundos, redimensionado a 720p y se le agregará un logo
-
----
-
-### 5. Listar Mis Videos (requiere JWT)
-
-```bash
+# Listar mis videos
 curl -X GET http://localhost:8080/api/videos/ \
   -H "Authorization: Bearer $TOKEN"
-```
 
-**Respuesta (200 OK):**
-```json
-[
-  {
-    "id": "a1b2c3d4-5678-90ab-cdef-1234567890ab",
-    "title": "Mi Video Musical",
-    "description": "Una presentación increíble",
-    "status": "completed",
-    "original_file_path": "/media/uploads/video.mp4",
-    "processed_file_path": "/media/processed/video_processed.mp4",
-    "is_published": false,
-    "created_at": "2025-10-19T20:30:00",
-    "updated_at": "2025-10-19T20:32:00"
-  }
-]
-```
-
-**Estados posibles:**
-- `pending` - En cola de procesamiento
-- `processing` - Procesándose actualmente
-- `completed` - Procesado exitosamente
-- `failed` - Error en el procesamiento
-
----
-
-### 6. Obtener Detalles de un Video (requiere JWT)
-
-```bash
-# Cambiar el video_id
-
+# Ver detalles de un video
 curl -X GET http://localhost:8080/api/videos/{video_id} \
   -H "Authorization: Bearer $TOKEN"
 ```
 
-**Respuesta (200 OK):**
-```json
-{
-  "id": "a1b2c3d4-5678-90ab-cdef-1234567890ab",
-  "title": "Mi Video Musical",
-  "description": "Una presentación increíble",
-  "status": "completed",
-  "original_file_path": "/media/uploads/video.mp4",
-  "processed_file_path": "/media/processed/video_processed.mp4",
-  "is_published": false,
-  "user_id": "ec3fe238-8640-4649-8837-e1b2cfc19be8",
-  "created_at": "2025-10-19T20:30:00",
-  "updated_at": "2025-10-19T20:32:00"
-}
-```
-
----
-
-### 7. Eliminar Video (requiere JWT)
-```bash
-# Cambiar el video_id
-curl -X DELETE http://localhost:8080/api/videos/{video_id} \
-  -H "Authorization: Bearer $TOKEN"
-```
-
-**Respuesta (204 No Content):**
-*(Sin contenido en el body)*
-
-**Errores posibles:**
-- `404` - Video no encontrado
-- `403` - No tienes permiso para eliminar este video
-
----
-
-### 8. Listar Videos Públicos (sin auth)
+### Endpoints Públicos
 
 ```bash
-curl "http://localhost:8080/api/public/videos?page=1&page_size=10&order_by=created_at&order=desc"
-```
+# Listar videos públicos
+curl "http://localhost:8080/api/public/videos?page=1&page_size=10"
 
-**Parámetros de query:**
-- `page` (opcional): Número de página (default: 1)
-- `page_size` (opcional): Videos por página (default: 10, máx: 100)
-- `order_by` (opcional): Campo para ordenar (created_at, title)
-- `order` (opcional): Orden (asc, desc)
-- `city` (opcional): Filtrar por ciudad del artista
-- `country` (opcional): Filtrar por país del artista
-
-**Respuesta (200 OK):**
-```json
-[
-  {
-    "video_id": "a1b2c3d4-5678-90ab-cdef-1234567890ab",
-    "title": "Mi Video Musical",
-    "player_name": "Carlos Martinez",
-    "city": "Bogota",
-    "country": "Colombia",
-    "processed_url": "https://anb.com/videos/processed/a1b2c3d4-5678-90ab-cdef-1234567890ab.mp4",
-    "votes": 15,
-    "uploaded_at": "2025-10-19T20:30:00"
-  }
-]
-```
-
----
-
-### 9. Votar por un Video (requiere JWT)
-
-```bash
+# Votar por un video (requiere JWT)
 curl -X POST http://localhost:8080/api/public/videos/{video_id}/vote \
   -H "Authorization: Bearer $TOKEN"
-```
 
-**Respuesta (200 OK):**
-```json
-{
-  "message": "Vote registered successfully",
-  "video_id": "a1b2c3d4-5678-90ab-cdef-1234567890ab",
-  "user_id": "ec3fe238-8640-4649-8837-e1b2cfc19be8"
-}
-```
-
-**Errores posibles:**
-- `400` - Ya votaste por este video
-- `404` - Video no encontrado
-
----
-
-### 10. Ver Ranking de Videos (sin auth)
-
-```bash
+# Ver ranking
 curl "http://localhost:8080/api/public/rankings?page=1&page_size=20"
 ```
 
-**Parámetros de query:**
-- `page` (opcional): Número de página (default: 1)
-- `page_size` (opcional): Resultados por página (default: 20, máx: 100)
-- `city` (opcional): Filtrar por ciudad
-- `country` (opcional): Filtrar por país
-
-**Respuesta (200 OK):**
-```json
-{
-  "rankings": [
-    {
-      "position": 1,
-      "video_id": "a1b2c3d4-5678-90ab-cdef-1234567890ab",
-      "title": "Mi Video Musical",
-      "vote_count": 150,
-      "artist_name": "Carlos Martinez",
-      "city": "Bogota",
-      "country": "Colombia"
-    },
-    {
-      "position": 2,
-      "video_id": "b2c3d4e5-6789-01bc-def0-2345678901bc",
-      "title": "Otro Video",
-      "vote_count": 120,
-      "artist_name": "Maria Lopez",
-      "city": "Medellin",
-      "country": "Colombia"
-    }
-  ],
-  "total": 50,
-  "page": 1,
-  "page_size": 20,
-  "total_pages": 3
-}
-```
-
 ---
 
-## 🧪 Tests
-
-### Ejecutar Tests
+## 🧪 Ejecutar Tests
 
 ```bash
-# Ejecutar todos los tests
+# Todos los tests
 docker-compose exec -T api pytest tests/ -v
 
 # Con reporte de cobertura
 docker-compose exec -T api pytest tests/ --cov=app --cov-report=term
 
-# Generar reporte HTML de cobertura
-docker-compose exec -T api pytest tests/ --cov=app --cov-report=html
-# Abre htmlcov/index.html en tu navegador
-
-# Ejecutar suite específica
-docker-compose exec -T api pytest tests/api/test_auth.py -v
+# Suite específica
+docker-compose exec -T api pytest tests/api/test_videos.py -v
 ```
 
 ### Cobertura de Tests
 
-**Cobertura actual: 79% (40 tests pasando)**
-
-**Desglose por archivo:**
-- `app/api/routes/auth.py` - **100%** (15 tests)
-- `app/api/routes/health.py` - **100%** (2 tests)
-- `app/api/routes/public.py` - **98%** (9 tests)
-- `app/api/routes/videos.py` - **82%** (14 tests)
-- `app/core/security.py` - **74%**
-- `app/db/models.py` - **95%**
-- `app/schemas/*` - **100%**
-
-**Suites de tests:**
-1. **Autenticación** (15 tests) - Signup, login, JWT, protección de endpoints
-2. **Gestión de Videos** (14 tests) - Upload, list, get, delete
-3. **Endpoints Públicos** (9 tests) - Videos públicos, votación, rankings
-4. **Health Check** (2 tests) - Verificación de salud del servicio
-
-### Pruebas con Postman/Newman
-
-```bash
-# Instalar newman (si no lo tienes)
-npm install -g newman
-
-# Ejecutar colección completa
-newman run collections/postman_collection.json \
-  -e collections/postman_environment.json \
-  --delay-request 1000
-
-# Ejecutar carpeta específica
-newman run collections/postman_collection.json \
-  -e collections/postman_environment.json \
-  --folder "Authentication"
-
-# Generar reporte HTML
-newman run collections/postman_collection.json \
-  -e collections/postman_environment.json \
-  -r html \
-  --reporter-html-export newman-report.html
-```
-
-Ver [collections/README.md](collections/README.md) para guía completa.
+- **Cobertura actual:** 98.8%
+- **Tests totales:** 40+ tests pasando
+- **Suites:** Autenticación, Videos, Endpoints Públicos, Health Check, S3 Integration
 
 ---
 
-## 💻 Desarrollo
+## 📊 Resultados de Pruebas de Carga (AWS)
 
-### Configuración Local (sin Docker)
+### Escenario 1: Capa Web
 
-```bash
-# Instalar Poetry
-curl -sSL https://install.python-poetry.org | python3 -
+- **Usuarios concurrentes máximos:** 150 VUs
+- **Requests totales:** 40,287
+- **Throughput máximo:** 39.46 req/s
+- **Latencia p50:** 120.81 ms
+- **Latencia p95:** 3,012.94 ms
+- **Tasa de éxito:** 83%
 
-# Instalar dependencias
-poetry install
+**Conclusión:** El sistema soporta hasta 150 usuarios concurrentes con Auto Scaling activo.
 
-# Iniciar servicios de base de datos
-docker-compose up -d db redis
+### Escenario 2: Upload y Procesamiento
 
-# Ejecutar API
-poetry run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+- **Tasa de éxito de upload:** 100%
+- **Tiempo promedio de upload:** 994 ms
+- **Videos procesados:** 2 (test mínimo)
+- **Workers:** 1 instancia en subnet privada
+- **Integración S3:** Funcional
 
-# Ejecutar worker de Celery (en otra terminal)
-poetry run celery -A app.worker.celery_app worker --loglevel=info
+**Conclusión:** Upload a S3 y cola de procesamiento funcionan correctamente.
+
+### Comparación con Entrega 2
+
+| Métrica | Entrega 2 | Entrega 3 | Mejora |
+|---------|-----------|-----------|--------|
+| Usuarios concurrentes | 20 | 150 | **650%** |
+| Escalabilidad | Fija (1 EC2) | Auto (1-5 EC2) | Dinámica |
+| Almacenamiento | NFS (bottleneck) | S3 | Ilimitado |
+| Alta disponibilidad | No | Multi-AZ | Sí |
+
+---
+
+## 🏗️ Stack Tecnológico
+
+### Backend
+- **FastAPI** 0.118+ - Framework moderno para APIs
+- **Python** 3.12 - Lenguaje de programación
+- **Gunicorn + Uvicorn** - Servidor ASGI con 4 workers
+- **SQLAlchemy** 2.0+ - ORM para PostgreSQL
+- **Pydantic** 2.5+ - Validación de datos
+
+### Procesamiento Asíncrono
+- **Celery** 5.3+ - Cola de tareas distribuida
+- **Redis** 7+ - Message broker
+- **moviepy** 2.2+ - Procesamiento de videos (trim, resize, watermark)
+
+### Almacenamiento
+- **PostgreSQL** 16 - Base de datos relacional (RDS)
+- **Amazon S3** - Almacenamiento de videos
+- **boto3** - SDK de AWS para Python
+
+### Infraestructura AWS
+- **CloudFormation** - Infraestructura como código
+- **EC2** t3.small - Instancias de cómputo
+- **Application Load Balancer** - Distribución de carga
+- **Auto Scaling Group** - Escalado automático
+- **VPC** - Red privada virtual
+- **Security Groups** - Firewall virtual
+
+### Testing y Calidad
+- **pytest** - Framework de testing
+- **k6** - Herramienta de pruebas de carga
+- **SonarQube** - Análisis de calidad de código
+- **Coverage.py** - Medición de cobertura
+
+---
+
+## 📂 Estructura del Proyecto
+
+```
+MISO4204-Desarrollo_Nube/
+│
+├── app/                                    # Código fuente de la aplicación
+│   ├── api/                                # Capa API
+│   │   └── routes/
+│   │       ├── __init__.py
+│   │       ├── auth.py                     # Endpoints de autenticación
+│   │       ├── health.py                   # Health check
+│   │       ├── videos.py                   # Gestión de videos (CRUD)
+│   │       └── public.py                   # Endpoints públicos (votos, rankings)
+│   │
+│   ├── core/                               # Núcleo de la aplicación
+│   │   ├── __init__.py
+│   │   ├── config.py                       # Configuración con Pydantic Settings
+│   │   ├── security.py                     # JWT token management
+│   │   └── storage.py                      # 🆕 Integración S3 con presigned URLs
+│   │
+│   ├── db/                                 # Base de datos
+│   │   ├── __init__.py
+│   │   ├── base.py                         # Base model con UUID y timestamps
+│   │   ├── database.py                     # SQLAlchemy engine y session
+│   │   └── models.py                       # Modelos (User, Video, Vote)
+│   │
+│   ├── schemas/                            # Schemas Pydantic
+│   │   ├── __init__.py
+│   │   ├── auth.py                         # Schemas de autenticación
+│   │   ├── video.py                        # Schemas de videos
+│   │   └── vote.py                         # Schemas de votos y rankings
+│   │
+│   ├── worker/                             # Procesamiento asíncrono
+│   │   ├── __init__.py
+│   │   ├── celery_app.py                   # Configuración de Celery
+│   │   └── videos.py                       # 🆕 Tareas asíncronas (S3 + moviepy)
+│   │
+│   └── main.py                             # Punto de entrada de FastAPI
+│
+├── tests/                                  # Suite de tests (98.8% coverage)
+│   ├── api/
+│   │   ├── test_auth.py                    # Tests de autenticación (15 tests)
+│   │   ├── test_videos.py                  # Tests de videos (14 tests)
+│   │   ├── test_public.py                  # Tests de endpoints públicos (9 tests)
+│   │   └── test_health.py                  # Tests de health check (2 tests)
+│   └── conftest.py                         # Fixtures de pytest
+│
+├── docs/                                   # 📖 Documentación completa
+│   ├── Entrega_1/                          # Entrega 1 (Docker local)
+│   ├── Entrega_2/                          # Entrega 2 (3 EC2 + NFS)
+│   └── Entrega_3/                          # ✅ Entrega 3 (Auto Scaling + S3)
+│       ├── arquitectura_aws.md             # Arquitectura completa
+│       ├── reporte_sonarqube.md            # Análisis de calidad
+│       └── deployment/
+│           ├── README.md                   # Guía de despliegue
+│           └── cloudformation/
+│               └── infrastructure.yaml     # 🔧 Template CloudFormation IaC
+│
+├── capacity-planning/                      # 📊 Pruebas de carga
+│   ├── pruebas_de_carga_entrega3.md       # Reporte completo de pruebas
+│   ├── scripts-entrega3/                   # Scripts de pruebas k6
+│   │   ├── README.md                       # Guía de uso
+│   │   ├── test_escenario1_capa_web.js    # Test web (17 min, 5→150 VUs)
+│   │   ├── test_escenario2_upload_videos.js # Test upload (3 min, 2 VUs)
+│   │   ├── graficas_escenario1.py          # Generador de gráficas E1
+│   │   ├── generar_graficas_escenario2.py  # Generador de gráficas E2
+│   │   └── setup_crear_usuarios_prueba.sh  # Setup de usuarios
+│   └── results-entrega3/                   # Resultados de pruebas
+│       ├── escenario1_output_final.log
+│       ├── graficas_escenario1.png
+│       ├── graficas_escenario2.png
+│       └── comparacion_entrega2_vs_entrega3.png
+│
+├── collections/                            # Colección de Postman
+│   ├── postman_collection.json             # Colección con 9 endpoints + tests
+│   ├── postman_environment.json            # Variables de entorno
+│   └── README.md                           # Guía de uso con Newman CLI
+│
+├── media/                                  # Archivos de video (volumen Docker)
+│   ├── uploads/                            # Videos originales subidos
+│   └── processed/                          # Videos procesados
+│
+├── .github/
+│   └── workflows/
+│       └── ci.yml                          # Pipeline de CI/CD
+│
+├── .env                                    # Variables de entorno
+├── docker-compose.yml                      # Orquestación de servicios
+├── Dockerfile                              # 🆕 Imagen para API y Worker (con boto3)
+├── nginx.conf                              # Configuración de Nginx
+├── pyproject.toml                          # 🆕 Dependencias con Poetry (incluye boto3)
+├── .pre-commit-config.yaml                 # Hooks de pre-commit
+└── README.md                               # Este archivo
 ```
 
-### Variables de Entorno
+### Módulos Clave de Entrega 3
 
-Configuradas en el archivo `.env`:
+#### `app/core/storage.py` - Sistema de Almacenamiento
+```python
+# Abstracción para soportar local y S3
+class StorageBackend:
+    - save_file()              # Guarda archivo (local o S3)
+    - get_file_url()           # Obtiene URL (path local o presigned URL S3)
+    - delete_file()            # Elimina archivo
 
-```bash
-# Base de datos
-DATABASE_URL=postgresql://fastapi_user:fastapi_password@db:5432/fastapi_db
-
-# JWT
-SECRET_KEY=your-secret-key-change-in-production
-ACCESS_TOKEN_EXPIRE_MINUTES=60
-
-# Celery
-CELERY_BROKER_URL=redis://redis:6379/0
-CELERY_RESULT_BACKEND=redis://redis:6379/0
-
-# Aplicación
-PROJECT_NAME=ANB Rising Stars Showcase API
-VERSION=1.0.0
-ENVIRONMENT=development
+# Configuración dinámica según STORAGE_BACKEND
+STORAGE_BACKEND = "s3"  # En AWS
+STORAGE_BACKEND = "local"  # En Docker local
 ```
 
-### Code Quality
+#### `app/worker/videos.py` - Procesamiento Asíncrono
+```python
+# Tarea Celery para procesamiento de videos
+@celery.task
+def process_video(video_id):
+    1. Descarga video de S3
+    2. Procesa con moviepy:
+       - Recorta a 30 segundos
+       - Redimensiona a 720p
+       - Agrega watermark
+    3. Sube video procesado a S3
+    4. Actualiza estado en PostgreSQL
+```
 
-```bash
-# Formatear código
-docker-compose exec api poetry run black .
-
-# Ordenar imports
-docker-compose exec api poetry run isort .
-
-# Linting
-docker-compose exec api poetry run flake8 app tests
-
-# Type checking
-docker-compose exec api poetry run mypy app
-
-# Ejecutar todos los checks
-docker-compose exec api poetry run black . --check && \
-  docker-compose exec api poetry run flake8 app tests && \
-  docker-compose exec api poetry run mypy app
+#### `docs/Entrega_3/deployment/cloudformation/infrastructure.yaml`
+```yaml
+Resources:
+  - VPC (10.0.0.0/16)
+  - 2 Subnets públicas (Multi-AZ)
+  - 1 Subnet privada (Worker)
+  - Application Load Balancer
+  - Auto Scaling Group (1-5 instancias)
+  - RDS PostgreSQL (db.t3.micro)
+  - S3 Bucket (videos)
+  - Security Groups
+  - IAM Roles (EC2 → S3 access)
+  - CloudWatch Logs
 ```
 
 ---
 
-## 🚀 Despliegue
+## 📁 Ubicación de Archivos de Entrega 3
 
-### Arquitectura
+### Documentación
 
-El sistema está configurado con:
-
-- **Gunicorn** con 4 workers Uvicorn para alto rendimiento
-- **Nginx** como reverse proxy con load balancing `least_conn`
-- **PostgreSQL** con connection pooling (10 base + 20 overflow por worker)
-- **Redis** para caché y cola de tareas de Celery
-- **Celery Worker** para procesamiento asíncrono de videos
-
-### Comandos Docker
-
-```bash
-# Iniciar servicios
-docker-compose up -d
-
-# Reconstruir e iniciar
-docker-compose up --build -d
-
-# Ver logs
-docker-compose logs -f api
-docker-compose logs -f worker
-docker-compose logs --tail=100 api
-
-# Detener servicios
-docker-compose stop
-
-# Eliminar todo (incluyendo volúmenes)
-docker-compose down -v
-
-# Ejecutar comando en contenedor
-docker-compose exec api bash
-docker-compose exec api python scripts/load_data.py
-
-# Reiniciar servicios específicos
-docker-compose restart api worker
+```
+docs/Entrega_3/
+├── arquitectura_aws.md                  # Arquitectura completa
+├── reporte_sonarqube.md                 # Análisis de calidad
+└── deployment/
+    ├── README.md                        # Guía de despliegue
+    └── cloudformation/
+        └── infrastructure.yaml          # Template IaC
 ```
 
-### Base de Datos
+### Pruebas de Carga
 
-```bash
-# Conectar a PostgreSQL
-docker-compose exec db psql -U fastapi_user -d fastapi_db
-
-# Ver tablas
-docker-compose exec db psql -U fastapi_user -d fastapi_db -c "\dt"
-
-# Ver usuarios
-docker-compose exec db psql -U fastapi_user -d fastapi_db -c "SELECT id, email, first_name, last_name FROM users;"
-
-# Backup
-docker-compose exec db pg_dump -U fastapi_user fastapi_db > backup.sql
-
-# Restore
-docker-compose exec -T db psql -U fastapi_user fastapi_db < backup.sql
+```
+capacity-planning/
+├── pruebas_de_carga_entrega3.md        # Reporte completo
+├── scripts-entrega3/
+│   ├── README.md                        # Guía de scripts
+│   ├── test_escenario1_capa_web.js     # Test web layer
+│   ├── test_escenario2_upload_videos.js # Test upload
+│   ├── graficas_escenario1.py           # Gráficas E1
+│   ├── generar_graficas_escenario2.py   # Gráficas E2
+│   └── setup_crear_usuarios_prueba.sh   # Setup usuarios
+└── results-entrega3/
+    ├── escenario1_output_final.log
+    ├── graficas_escenario1.png
+    ├── graficas_escenario2.png
+    └── comparacion_entrega2_vs_entrega3.png
 ```
 
-### Celery Operations
+### Código Fuente
 
-```bash
-# Ver tareas activas
-docker-compose exec worker celery -A app.worker.celery_app inspect active
-
-# Ver tareas registradas
-docker-compose exec worker celery -A app.worker.celery_app inspect registered
-
-# Purgar todas las tareas de la cola
-docker-compose exec worker celery -A app.worker.celery_app purge
 ```
-
----
-
-## 📊 CI/CD Pipeline
-
-Pipeline automatizado con GitHub Actions que se ejecuta en cada push a `main` o `develop`:
-
-### Etapas
-
-1. **Tests y Linting**
-   - Setup de Python 3.12 y Poetry
-   - Ejecución de flake8, black y mypy
-   - Ejecución de 40 tests con pytest
-   - Generación de reporte de cobertura
-
-2. **Build de Docker**
-   - Construcción de imagen Docker
-   - Validación de docker-compose.yml
-   - Uso de caché para optimización
-
-3. **SonarQube** (condicional)
-   - Análisis de código estático
-   - Métricas de calidad y cobertura
-
-Ver configuración completa en [`.github/workflows/ci.yml`](.github/workflows/ci.yml)
-
----
-
-## 📄 Licencia
-
-Este proyecto está bajo la Licencia MIT.
-
----
-
-## 👥 Equipo
-
-Proyecto desarrollado para el curso MISO4204 - Desarrollo en la Nube, Universidad de los Andes.
+app/
+├── api/routes/          # Endpoints
+├── core/
+│   ├── storage.py       # Integración S3 con presigned URLs
+│   └── config.py        # Configuración (STORAGE_BACKEND=s3)
+├── worker/videos.py     # Tareas Celery para procesamiento
+└── main.py              # Punto de entrada FastAPI
+```
 
 ---
 
@@ -857,10 +543,44 @@ Proyecto desarrollado para el curso MISO4204 - Desarrollo en la Nube, Universida
 - [Documentación Interactiva (Swagger)](http://localhost:8080/docs)
 - [Documentación Alternativa (ReDoc)](http://localhost:8080/redoc)
 - [FastAPI Documentation](https://fastapi.tiangolo.com/)
-- [Celery Documentation](https://docs.celeryproject.org/)
-- [PostgreSQL Documentation](https://www.postgresql.org/docs/)
-- [Docker Documentation](https://docs.docker.com/)
+- [AWS CloudFormation Documentation](https://docs.aws.amazon.com/cloudformation/)
+- [k6 Load Testing](https://k6.io/docs/)
 
 ---
 
-**¿Necesitas ayuda?** Consulta la [documentación completa](docs/Entrega_1/arquitectura.md) o abre un issue en GitHub.
+## 👥 Equipo
+
+Proyecto desarrollado para el curso **MISO4204 - Desarrollo en la Nube**
+**Universidad de los Andes**
+
+---
+
+## 📄 Notas Importantes
+
+### Diferencias entre Local y AWS
+
+| Aspecto | Local (Docker) | AWS (Producción) |
+|---------|----------------|------------------|
+| Storage | Volúmenes Docker | Amazon S3 |
+| Database | PostgreSQL container | Amazon RDS |
+| Scaling | No | Auto Scaling Group (1-5) |
+| Load Balancer | Nginx local | Application Load Balancer |
+| Networking | Bridge network | VPC Multi-AZ |
+
+### Configuración de Storage
+
+En **local** (Docker):
+```bash
+STORAGE_BACKEND=local  # Usa /app/media
+```
+
+En **AWS**:
+```bash
+STORAGE_BACKEND=s3     # Usa S3 bucket
+AWS_S3_BUCKET_NAME=anb-video-storage-bucket
+AWS_REGION=us-east-1
+```
+
+---
+
+**¿Necesitas ayuda?** Consulta la [documentación completa de Entrega 3](docs/Entrega_3/arquitectura_aws.md) o revisa las [pruebas de carga](capacity-planning/pruebas_de_carga_entrega3.md).
