@@ -817,178 +817,178 @@ Resources:
               unzip \
               jq
 
-          # Install AWS CLI v2
-          cd /tmp
-          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-          unzip -q awscliv2.zip
-          ./aws/install
-          rm -rf aws awscliv2.zip
-          cd /
+            # Install AWS CLI v2
+            cd /tmp
+            curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+            unzip -q awscliv2.zip
+            ./aws/install
+            rm -rf aws awscliv2.zip
+            cd /
 
-          # Install CloudWatch Agent
-          wget https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb
-          dpkg -i -E ./amazon-cloudwatch-agent.deb
-          rm amazon-cloudwatch-agent.deb
+            # Install CloudWatch Agent
+            wget https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb
+            dpkg -i -E ./amazon-cloudwatch-agent.deb
+            rm amazon-cloudwatch-agent.deb
 
-          # Configure CloudWatch Agent
-          cat > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json <<'CWEOF'
-          {
-            "logs": {
-              "logs_collected": {
-                "files": {
-                  "collect_list": [
-                    {
-                      "file_path": "/var/log/user-data.log",
-                      "log_group_name": "/aws/ec2/${ProjectName}-worker",
-                      "log_stream_name": "{instance_id}/user-data.log"
-                    },
-                    {
-                      "file_path": "/var/log/syslog",
-                      "log_group_name": "/aws/ec2/${ProjectName}-worker",
-                      "log_stream_name": "{instance_id}/syslog"
-                    },
-                    {
-                      "file_path": "/var/log/sqs-worker.log",
-                      "log_group_name": "/aws/ec2/${ProjectName}-worker",
-                      "log_stream_name": "{instance_id}/sqs-worker.log"
-                    }
-                  ]
-                }
-              },
-              "log_stream_name": "{instance_id}"
-            },
-            "metrics": {
-              "namespace": "ANBVideo/Worker",
-              "metrics_collected": {
-                "cpu": {
-                  "measurement": [
-                    {
-                      "name": "cpu_usage_idle",
-                      "rename": "CPU_IDLE",
-                      "unit": "Percent"
-                    }
-                  ],
-                  "metrics_collection_interval": 60
+            # Configure CloudWatch Agent
+            cat > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json <<'CWEOF'
+            {
+              "logs": {
+                "logs_collected": {
+                  "files": {
+                    "collect_list": [
+                      {
+                        "file_path": "/var/log/user-data.log",
+                        "log_group_name": "/aws/ec2/${ProjectName}-worker",
+                        "log_stream_name": "{instance_id}/user-data.log"
+                      },
+                      {
+                        "file_path": "/var/log/syslog",
+                        "log_group_name": "/aws/ec2/${ProjectName}-worker",
+                        "log_stream_name": "{instance_id}/syslog"
+                      },
+                      {
+                        "file_path": "/var/log/sqs-worker.log",
+                        "log_group_name": "/aws/ec2/${ProjectName}-worker",
+                        "log_stream_name": "{instance_id}/sqs-worker.log"
+                      }
+                    ]
+                  }
                 },
-                "mem": {
-                  "measurement": [
-                    {
-                      "name": "mem_used_percent",
-                      "rename": "MEM_USED",
-                      "unit": "Percent"
-                    }
-                  ],
-                  "metrics_collection_interval": 60
+                "log_stream_name": "{instance_id}"
+              },
+              "metrics": {
+                "namespace": "ANBVideo/Worker",
+                "metrics_collected": {
+                  "cpu": {
+                    "measurement": [
+                      {
+                        "name": "cpu_usage_idle",
+                        "rename": "CPU_IDLE",
+                        "unit": "Percent"
+                      }
+                    ],
+                    "metrics_collection_interval": 60
+                  },
+                  "mem": {
+                    "measurement": [
+                      {
+                        "name": "mem_used_percent",
+                        "rename": "MEM_USED",
+                        "unit": "Percent"
+                      }
+                    ],
+                    "metrics_collection_interval": 60
+                  }
                 }
               }
             }
-          }
-          CWEOF
+            CWEOF
 
-          # Start CloudWatch Agent
-          /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
-            -a fetch-config \
-            -m ec2 \
-            -s \
-            -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
+            # Start CloudWatch Agent
+            /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
+              -a fetch-config \
+              -m ec2 \
+              -s \
+              -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
 
-          # Create app directory first
-          mkdir -p /app
+            # Create app directory first
+            mkdir -p /app
 
-          # Set Python 3.11 as default BEFORE cloning
-          update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1
-          update-alternatives --set python3 /usr/bin/python3.11
+            # Set Python 3.11 as default BEFORE cloning
+            update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1
+            update-alternatives --set python3 /usr/bin/python3.11
 
-          # Verify Python version
-          python3 --version
+            # Verify Python version
+            python3 --version
 
-          # Install Poetry with Python 3.11
-          curl -sSL https://install.python-poetry.org | python3.11 -
-          export PATH="/root/.local/bin:$PATH"
+            # Install Poetry with Python 3.11
+            curl -sSL https://install.python-poetry.org | python3.11 -
+            export PATH="/root/.local/bin:$PATH"
 
-          # Clone repository
-          cd /app
-          git clone ${GitHubRepo} .
-          git checkout ${GitHubBranch}
+            # Clone repository
+            cd /app
+            git clone ${GitHubRepo} .
+            git checkout ${GitHubBranch}
 
-          # Configure Poetry to not create virtualenv (install globally)
-          /root/.local/bin/poetry config virtualenvs.create false
+            # Configure Poetry to not create virtualenv (install globally)
+            /root/.local/bin/poetry config virtualenvs.create false
 
-          # Install Python dependencies
-          /root/.local/bin/poetry install --without dev --no-root --no-interaction
+            # Install Python dependencies
+            /root/.local/bin/poetry install --without dev --no-root --no-interaction
 
-          # Generate SECRET_KEY (for JWT verification)
-          SECRET_KEY=$(openssl rand -hex 32)
+            # Generate SECRET_KEY (for JWT verification)
+            SECRET_KEY=$(openssl rand -hex 32)
 
-          # Get SQS Queue URLs
-          echo "Getting SQS Queue URLs..."
-          SQS_QUEUE_URL="${VideoProcessingQueue}"
-          SQS_DLQ_URL="${VideoProcessingDLQ}"
+            # Get SQS Queue URLs
+            echo "Getting SQS Queue URLs..."
+            SQS_QUEUE_URL="${VideoProcessingQueue}"
+            SQS_DLQ_URL="${VideoProcessingDLQ}"
 
-          echo "Main Queue URL: $SQS_QUEUE_URL"
-          echo "DLQ URL: $SQS_DLQ_URL"
+            echo "Main Queue URL: $SQS_QUEUE_URL"
+            echo "DLQ URL: $SQS_DLQ_URL"
 
-          # Configure environment variables
-          cat > /app/.env <<EOF
-          # Database
-          DATABASE_URL=postgresql://fastapi_user:${DBPassword}@${RDSDatabase.Endpoint.Address}:5432/fastapi_db
+            # Configure environment variables
+            cat > /app/.env <<EOF
+            # Database
+            DATABASE_URL=postgresql://fastapi_user:${DBPassword}@${RDSDatabase.Endpoint.Address}:5432/fastapi_db
 
-          # API Security
-          SECRET_KEY=$SECRET_KEY
-          ACCESS_TOKEN_EXPIRE_MINUTES=1440
+            # API Security
+            SECRET_KEY=$SECRET_KEY
+            ACCESS_TOKEN_EXPIRE_MINUTES=1440
 
-          # SQS Configuration (NEW - Entrega 4)
-          SQS_QUEUE_URL=$SQS_QUEUE_URL
-          SQS_DLQ_URL=$SQS_DLQ_URL
+            # SQS Configuration (NEW - Entrega 4)
+            SQS_QUEUE_URL=$SQS_QUEUE_URL
+            SQS_DLQ_URL=$SQS_DLQ_URL
 
-          # Environment
-          ENVIRONMENT=production
+            # Environment
+            ENVIRONMENT=production
 
-          # Storage Configuration - S3
-          STORAGE_BACKEND=s3
-          AWS_S3_BUCKET=${VideoStorageBucket}
-          AWS_REGION=${AWS::Region}
-          S3_UPLOAD_PREFIX=uploads/
-          S3_PROCESSED_PREFIX=processed/
-          EOF
+            # Storage Configuration - S3
+            STORAGE_BACKEND=s3
+            AWS_S3_BUCKET=${VideoStorageBucket}
+            AWS_REGION=${AWS::Region}
+            S3_UPLOAD_PREFIX=uploads/
+            S3_PROCESSED_PREFIX=processed/
+            EOF
 
-          # Configure SQS Worker systemd service
-          cat > /etc/systemd/system/sqs-worker.service <<'EOF'
-          [Unit]
-          Description=SQS Video Processing Worker
-          After=network.target
+            # Configure SQS Worker systemd service
+            cat > /etc/systemd/system/sqs-worker.service <<'EOF'
+            [Unit]
+            Description=SQS Video Processing Worker
+            After=network.target
 
-          [Service]
-          Type=simple
-          User=root
-          WorkingDirectory=/app
-          EnvironmentFile=/app/.env
-          ExecStart=/usr/bin/python3 -m app.worker.sqs_worker
-          Restart=always
-          RestartSec=10
-          StandardOutput=append:/var/log/sqs-worker.log
-          StandardError=append:/var/log/sqs-worker.log
+            [Service]
+            Type=simple
+            User=root
+            WorkingDirectory=/app
+            EnvironmentFile=/app/.env
+            ExecStart=/usr/bin/python3 -m app.worker.sqs_worker
+            Restart=always
+            RestartSec=10
+            StandardOutput=append:/var/log/sqs-worker.log
+            StandardError=append:/var/log/sqs-worker.log
 
-          [Install]
-          WantedBy=multi-user.target
-          EOF
+            [Install]
+            WantedBy=multi-user.target
+            EOF
 
-          # Create log file
-          touch /var/log/sqs-worker.log
-          chmod 666 /var/log/sqs-worker.log
+            # Create log file
+            touch /var/log/sqs-worker.log
+            chmod 666 /var/log/sqs-worker.log
 
-          # Start SQS Worker
-          systemctl daemon-reload
-          systemctl enable sqs-worker
-          systemctl start sqs-worker
+            # Start SQS Worker
+            systemctl daemon-reload
+            systemctl enable sqs-worker
+            systemctl start sqs-worker
 
-          # Wait a bit for worker to start
-          sleep 5
+            # Wait a bit for worker to start
+            sleep 5
 
-          # Check worker status
-          systemctl status sqs-worker --no-pager || true
+            # Check worker status
+            systemctl status sqs-worker --no-pager || true
 
-          echo "=== SQS Worker Setup Complete ==="
+            echo "=== SQS Worker Setup Complete ==="
 
   # Worker Auto Scaling Group
   WorkerAutoScalingGroup:
