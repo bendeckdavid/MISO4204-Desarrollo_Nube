@@ -83,7 +83,7 @@
 
 Auto Scaling Configuration:
 - Min Capacity: 1
-- Max Capacity: 5
+- Max Capacity: 3
 - Desired Capacity: 1 (ajustado dinámicamente)
 - Scaling Policy: Target Tracking (CPU > 10%)
 - Cooldown: 300 segundos
@@ -125,7 +125,7 @@ Auto Scaling Configuration:
 #### 4. Auto Scaling Group (ASG)
 - **Launch Template**: Web Server configuration
 - **Min Capacity**: 1 instancia
-- **Max Capacity**: 5 instancias
+- **Max Capacity**: 3 instancias
 - **Desired Capacity**: 1 (ajustado dinámicamente)
 - **Subnets**: us-east-1a, us-east-1b (Multi-AZ)
 - **Health Check Type**: ELB
@@ -295,7 +295,7 @@ IamInstanceProfile:
 
 **Configuración:**
 ```yaml
-Min: 1, Max: 5, Desired: 1
+Min: 1, Max: 3, Desired: 1
 Target CPU: 10%
 Scale-out cooldown: 60s
 Scale-in cooldown: 300s (más conservador)
@@ -304,7 +304,7 @@ Scale-in cooldown: 300s (más conservador)
 **Justificación de elección:**
 - Target Tracking vs Step Scaling: Más simple y predictivo
 - CPU metric: Correlaciona bien con carga de trabajo (procesamiento de requests)
-- Max 5 instancias: Balance entre costo y disponibilidad
+- Max 3 instancias: Balance entre costo y disponibilidad
 - Scale-in lento: Previene flapping durante tráfico variable
 
 ### Amazon EC2 (Elastic Compute Cloud)
@@ -470,7 +470,7 @@ En el entorno de AWS Academy, **no podemos crear roles personalizados de IAM** d
 | Aspecto | Entrega 2 (AWS Manual) | Entrega 3 (IaC + Auto Scaling) |
 |---------|------------------------|--------------------------------|
 | **Despliegue** | Scripts bash manuales (3 EC2s) | CloudFormation (IaC) |
-| **Web Servers** | 1 instancia EC2 fija | Auto Scaling Group (1-5 instancias) |
+| **Web Servers** | 1 instancia EC2 fija | Auto Scaling Group (1-3 instancias) |
 | **Balanceo de carga** | Sin balanceador (IP directa) | Application Load Balancer |
 | **Almacenamiento** | NFS en EC2 dedicado (File Server) | Amazon S3 |
 | **Seguridad de acceso** | Variables de entorno + SSH keys | IAM Roles (sin credenciales estáticas) |
@@ -492,7 +492,7 @@ En el entorno de AWS Academy, **no podemos crear roles personalizados de IAM** d
    - Distribución de tráfico entre múltiples instancias
 
 3. **Auto Scaling Group**
-   - Escalado horizontal automático (1-5 instancias)
+   - Escalado horizontal automático (1-3 instancias)
    - Target Tracking Policy basada en CPU
    - Multi-AZ deployment
 
@@ -878,7 +878,7 @@ sudo journalctl -u celery --since "1 hour ago"
 | Métrica | Entrega 1 (Docker) | Entrega 2 (AWS Manual) | Entrega 3 (IaC + Auto Scaling) |
 |---------|-------------------|------------------------|-------------------------------|
 | **Tiempo de despliegue** | 5 min | ~30 min | ~15 min |
-| **Instancias EC2** | 0 (local) | 3 fijas | 1-5 dinámicas |
+| **Instancias EC2** | 0 (local) | 3 fijas | 1-3 dinámicas |
 | **Reproducibilidad** | Alta (docker-compose) | Media (scripts) | Alta (CloudFormation) |
 | **Escalabilidad** | No | Manual | Automática |
 | **Costo mensual** | $0 | ~$60 | ~$35-75 (según carga) |

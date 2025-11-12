@@ -22,7 +22,7 @@ Guía completa para desplegar la aplicación ANB Rising Stars Showcase en AWS ut
 |---------|-------------------|--------------------------------|
 | **Despliegue** | Scripts bash manuales (3 EC2s) | CloudFormation template YAML |
 | **Tiempo** | ~30-40 minutos (manual) | ~15 minutos (automatizado) |
-| **Web Servers** | 1 instancia EC2 fija | Auto Scaling Group (1-5 instancias) |
+| **Web Servers** | 1 instancia EC2 fija | Auto Scaling Group (1-3 instancias) |
 | **Balanceo de carga** | Sin balanceador | Application Load Balancer |
 | **Almacenamiento** | NFS en EC2 (File Server) | Amazon S3 |
 | **Acceso a S3** | N/A | IAM Roles (LabRole en Academy) |
@@ -107,7 +107,7 @@ Guía completa para desplegar la aplicación ANB Rising Stars Showcase en AWS ut
 
 Auto Scaling Configuration:
 - Min Capacity: 1
-- Max Capacity: 5
+- Max Capacity: 3
 - Desired Capacity: 1 (ajustado dinámicamente)
 - Scaling Policy: Target Tracking (CPU > 10%)
 - Cooldown: 300 segundos
@@ -116,7 +116,7 @@ Auto Scaling Configuration:
 ### Componentes Principales
 - **CloudFormation**: Template YAML (~1200 líneas, 25+ recursos)
 - **Application Load Balancer**: Distribuye tráfico HTTP
-- **Auto Scaling Group**: 1-5 Web Servers (t3.small)
+- **Auto Scaling Group**: 1-3 Web Servers (t3.small)
 - **Amazon S3**: Almacenamiento de videos (reemplaza NFS)
 - **Amazon RDS**: PostgreSQL 16 (db.t3.micro)
 - **IAM Roles**: LabRole de AWS Academy para acceso a S3
@@ -648,16 +648,16 @@ watch -n 10 'aws cloudwatch get-metric-statistics \
 
 **Terminal 2 - Monitorear ASG Activities**:
 ```bash
-watch -n 5 'aws autoscaling describe-scaling-activities \
+watch -n 3 'aws autoscaling describe-scaling-activities \
   --auto-scaling-group-name anb-video-web-asg \
-  --max-records 5 \
+  --max-records 3 \
   --query "Activities[*].[StartTime, StatusCode, Description]" \
   --output table'
 ```
 
 **Terminal 3 - Monitorear Instancias**:
 ```bash
-watch -n 5 'aws autoscaling describe-auto-scaling-groups \
+watch -n 3 'aws autoscaling describe-auto-scaling-groups \
   --auto-scaling-group-names anb-video-web-asg \
   --query "AutoScalingGroups[0].[DesiredCapacity, length(Instances), Instances[*].[InstanceId, HealthStatus]]" \
   --output table'
@@ -682,7 +682,7 @@ Ejemplo de respuesta:
 +----------+-------+-----+----------+
 | Current  | Desired | Max | Min    |
 +----------+-------+-----+----------+
-| 2        | 2      | 5   | 1      |
+| 2        | 2      | 3   | 1      |
 +----------+-------+-----+----------+
 ```
 

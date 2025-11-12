@@ -81,7 +81,7 @@ Los usuarios virtuales simulan comportamiento real con la siguiente distribució
 - **ALB**: Application Load Balancer en us-east-1
 - **ASG**: Auto Scaling Group
   - MinSize: 1
-  - MaxSize: 5
+  - MaxSize: 3
   - DesiredCapacity: 1
   - Health Check: ELB
   - Health Check Grace Period: 300 segundos
@@ -412,7 +412,7 @@ La infraestructura de Entrega 3 con Auto Scaling demuestra:
 - El ASG responde correctamente al incremento de carga
 - El tiempo de aprovisionamiento (~3-5 min) puede causar degradación temporal durante picos súbitos
 - El health check de ELB garantiza que solo instancias saludables reciben tráfico
-- La configuración de 1-5 instancias es adecuada para la carga probada
+- La configuración de 1-3 instancias es adecuada para la carga probada
 
 ### 6.3 Limitaciones Identificadas
 
