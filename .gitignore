@@ -84,6 +84,7 @@ celerybeat.pid
 cloudformation/parameters.json
 cloudformation/aws-info.txt
 docs/Entrega_3/deployment/cloudformation/parameters.json
+docs/Entrega_4/deployment/cloudformation/parameters.json
 
 # AWS credentials and keys
 *.pem
