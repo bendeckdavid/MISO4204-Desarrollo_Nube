@@ -1,0 +1,43 @@
+{
+	"id": "entrega4-environment",
+	"name": "ANB Video Platform - Entrega 4 Environment",
+	"values": [
+		{
+			"key": "BASE_URL",
+			"value": "http://anb-video-alb-1931734891.us-east-1.elb.amazonaws.com",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "ACCESS_TOKEN",
+			"value": "",
+			"type": "secret",
+			"enabled": true
+		},
+		{
+			"key": "USER_ID",
+			"value": "",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "VIDEO_ID",
+			"value": "",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "SQS_QUEUE_URL",
+			"value": "https://sqs.us-east-1.amazonaws.com/240377264548/anb-video-processing-queue",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "SQS_DLQ_URL",
+			"value": "https://sqs.us-east-1.amazonaws.com/240377264548/anb-video-processing-dlq",
+			"type": "default",
+			"enabled": true
+		}
+	],
+	"_postman_variable_scope": "environment"
+}

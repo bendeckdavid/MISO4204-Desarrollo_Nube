@@ -1,0 +1,553 @@
+{
+	"info": {
+		"_postman_id": "e4b2c3d1-5678-9abc-def0-123456789abc",
+		"name": "ANB Video Platform - Entrega 4 (SQS)",
+		"description": "Collection for testing video platform with SQS queue processing and worker auto-scaling",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Health Check",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Response has status field\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.have.property('status');",
+							"    pm.expect(jsonData.status).to.eql('healthy');",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{BASE_URL}}/health",
+					"host": [
+						"{{BASE_URL}}"
+					],
+					"path": [
+						"health"
+					]
+				},
+				"description": "Check API health status"
+			},
+			"response": []
+		},
+		{
+			"name": "1. Signup User",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 201\", function () {",
+							"    pm.response.to.have.status(201);",
+							"});",
+							"",
+							"pm.test(\"Response has user data\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.have.property('id');",
+							"    pm.expect(jsonData).to.have.property('email');",
+							"    pm.environment.set(\"USER_ID\", jsonData.id);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"email\": \"test.entrega4@example.com\",\n  \"password\": \"SecurePassword123!\",\n  \"confirm_password\": \"SecurePassword123!\"\n}"
+				},
+				"url": {
+					"raw": "{{BASE_URL}}/api/auth/signup",
+					"host": [
+						"{{BASE_URL}}"
+					],
+					"path": [
+						"api",
+						"auth",
+						"signup"
+					]
+				},
+				"description": "Register a new user"
+			},
+			"response": []
+		},
+		{
+			"name": "2. Login User",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Response has access token\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.have.property('access_token');",
+							"    pm.environment.set(\"ACCESS_TOKEN\", jsonData.access_token);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"username\": \"test.entrega4@example.com\",\n  \"password\": \"SecurePassword123!\"\n}"
+				},
+				"url": {
+					"raw": "{{BASE_URL}}/api/auth/login",
+					"host": [
+						"{{BASE_URL}}"
+					],
+					"path": [
+						"api",
+						"auth",
+						"login"
+					]
+				},
+				"description": "Login and get access token"
+			},
+			"response": []
+		},
+		{
+			"name": "3. Upload Video (Queues to SQS)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 201\", function () {",
+							"    pm.response.to.have.status(201);",
+							"});",
+							"",
+							"pm.test(\"Response has video data\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.have.property('id');",
+							"    pm.expect(jsonData).to.have.property('status');",
+							"    pm.expect(jsonData.status).to.eql('pending');",
+							"    pm.environment.set(\"VIDEO_ID\", jsonData.id);",
+							"});",
+							"",
+							"pm.test(\"Video message sent to SQS\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.have.property('message');",
+							"    console.log('Video queued for processing via SQS');",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{ACCESS_TOKEN}}"
+					}
+				],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "title",
+							"value": "Test Video Entrega 4 - SQS Processing",
+							"type": "text"
+						},
+						{
+							"key": "file",
+							"type": "file",
+							"src": "/path/to/your/video.mp4",
+							"description": "Select a video file from your computer"
+						}
+					]
+				},
+				"url": {
+					"raw": "{{BASE_URL}}/api/videos/upload",
+					"host": [
+						"{{BASE_URL}}"
+					],
+					"path": [
+						"api",
+						"videos",
+						"upload"
+					]
+				},
+				"description": "Upload a video - it will be queued to SQS for async processing by workers"
+			},
+			"response": []
+		},
+		{
+			"name": "4. Check Video Status",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Response has video details\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.have.property('status');",
+							"    console.log('Video status:', jsonData.status);",
+							"    ",
+							"    if (jsonData.status === 'processed') {",
+							"        console.log('✅ Video processed successfully by SQS worker');",
+							"    } else if (jsonData.status === 'processing') {",
+							"        console.log('⏳ Video is being processed by worker');",
+							"    } else if (jsonData.status === 'pending') {",
+							"        console.log('📝 Video is queued in SQS, waiting for worker');",
+							"    } else if (jsonData.status === 'failed') {",
+							"        console.log('❌ Video processing failed - check DLQ');",
+							"    }",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{ACCESS_TOKEN}}"
+					}
+				],
+				"url": {
+					"raw": "{{BASE_URL}}/api/videos/{{VIDEO_ID}}",
+					"host": [
+						"{{BASE_URL}}"
+					],
+					"path": [
+						"api",
+						"videos",
+						"{{VIDEO_ID}}"
+					]
+				},
+				"description": "Check video processing status (pending/processing/processed/failed)"
+			},
+			"response": []
+		},
+		{
+			"name": "5. List My Videos",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Response is array of videos\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.be.an('array');",
+							"    ",
+							"    if (jsonData.length > 0) {",
+							"        console.log('Total videos:', jsonData.length);",
+							"        jsonData.forEach(function(video) {",
+							"            console.log('Video ID:', video.id, '- Status:', video.status);",
+							"        });",
+							"    }",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{ACCESS_TOKEN}}"
+					}
+				],
+				"url": {
+					"raw": "{{BASE_URL}}/api/videos/my-videos",
+					"host": [
+						"{{BASE_URL}}"
+					],
+					"path": [
+						"api",
+						"videos",
+						"my-videos"
+					]
+				},
+				"description": "List all videos uploaded by the authenticated user"
+			},
+			"response": []
+		},
+		{
+			"name": "6. List Public Videos",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Response has videos\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.be.an('array');",
+							"    ",
+							"    var processedVideos = jsonData.filter(v => v.status === 'processed');",
+							"    console.log('Processed videos:', processedVideos.length);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{BASE_URL}}/api/public/videos",
+					"host": [
+						"{{BASE_URL}}"
+					],
+					"path": [
+						"api",
+						"public",
+						"videos"
+					]
+				},
+				"description": "List all processed and published videos (no auth required)"
+			},
+			"response": []
+		},
+		{
+			"name": "7. Vote for Video",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 201\", function () {",
+							"    pm.response.to.have.status(201);",
+							"});",
+							"",
+							"pm.test(\"Vote registered successfully\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.have.property('message');",
+							"    console.log('✅ Vote registered successfully');",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{ACCESS_TOKEN}}"
+					}
+				],
+				"url": {
+					"raw": "{{BASE_URL}}/api/public/videos/{{VIDEO_ID}}/vote",
+					"host": [
+						"{{BASE_URL}}"
+					],
+					"path": [
+						"api",
+						"public",
+						"videos",
+						"{{VIDEO_ID}}",
+						"vote"
+					]
+				},
+				"description": "Vote for a processed video"
+			},
+			"response": []
+		},
+		{
+			"name": "8. Get Ranking",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Response has ranking\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData).to.have.property('videos');",
+							"    pm.expect(jsonData.videos).to.be.an('array');",
+							"    ",
+							"    console.log('Top videos in ranking:');",
+							"    jsonData.videos.slice(0, 5).forEach(function(video, index) {",
+							"        console.log((index + 1) + '. ' + video.title + ' - Votes: ' + video.votes);",
+							"    });",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "{{BASE_URL}}/api/public/ranking",
+					"host": [
+						"{{BASE_URL}}"
+					],
+					"path": [
+						"api",
+						"public",
+						"ranking"
+					]
+				},
+				"description": "Get video ranking by votes"
+			},
+			"response": []
+		},
+		{
+			"name": "AWS - Check SQS Queue Attributes",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Response contains queue attributes\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    console.log('Queue Attributes:', jsonData);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "https://sqs.us-east-1.amazonaws.com/?Action=GetQueueAttributes&QueueUrl={{SQS_QUEUE_URL}}&AttributeName.1=All&Version=2012-11-05",
+					"protocol": "https",
+					"host": [
+						"sqs",
+						"us-east-1",
+						"amazonaws",
+						"com"
+					],
+					"path": [
+						""
+					],
+					"query": [
+						{
+							"key": "Action",
+							"value": "GetQueueAttributes"
+						},
+						{
+							"key": "QueueUrl",
+							"value": "{{SQS_QUEUE_URL}}"
+						},
+						{
+							"key": "AttributeName.1",
+							"value": "All"
+						},
+						{
+							"key": "Version",
+							"value": "2012-11-05"
+						}
+					]
+				},
+				"description": "Check SQS queue depth and attributes (requires AWS credentials)"
+			},
+			"response": []
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "BASE_URL",
+			"value": "http://anb-video-alb-1931734891.us-east-1.elb.amazonaws.com",
+			"type": "string"
+		},
+		{
+			"key": "ACCESS_TOKEN",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "USER_ID",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "VIDEO_ID",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "SQS_QUEUE_URL",
+			"value": "https://sqs.us-east-1.amazonaws.com/240377264548/anb-video-processing-queue",
+			"type": "string"
+		},
+		{
+			"key": "SQS_DLQ_URL",
+			"value": "https://sqs.us-east-1.amazonaws.com/240377264548/anb-video-processing-dlq",
+			"type": "string"
+		}
+	]
+}
