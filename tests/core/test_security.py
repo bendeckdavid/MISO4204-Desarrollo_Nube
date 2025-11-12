@@ -24,10 +24,12 @@ class TestGetCurrentUserOptional:
 
     def test_get_current_user_optional_token_missing_sub(self, db):
         """Test with token that doesn't have 'sub' claim"""
+        from datetime import datetime, timedelta, timezone
+
+        import jwt
+
         from app.core.config import settings
         from app.core.security import ALGORITHM
-        import jwt
-        from datetime import datetime, timedelta, timezone
 
         # Create token without 'sub' claim
         expire = datetime.now(timezone.utc) + timedelta(minutes=15)
@@ -41,8 +43,9 @@ class TestGetCurrentUserOptional:
 
     def test_get_current_user_optional_nonexistent_user(self, db):
         """Test with valid token but user doesn't exist"""
-        from app.core.security import create_access_token
         import uuid
+
+        from app.core.security import create_access_token
 
         fake_user_id = str(uuid.uuid4())
         token = create_access_token(data={"sub": fake_user_id})

@@ -1,12 +1,13 @@
 """Database models"""
 
-import bcrypt
 import uuid
 from datetime import datetime
-from sqlalchemy import Column, String, ForeignKey, Boolean, DateTime, UniqueConstraint
-from sqlalchemy.orm import relationship
+
+import bcrypt
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.hybrid import hybrid_property
+from sqlalchemy.orm import relationship
 
 from app.db.base import Base
 

@@ -1,5 +1,6 @@
 """Tests for authentication endpoints"""
 import uuid
+
 from fastapi import status
 from fastapi.testclient import TestClient
 
@@ -207,6 +208,7 @@ class TestTokenFunctions:
     def test_create_token_with_custom_expiration(self, client: TestClient, db):
         """Test creating token with custom expiration"""
         from datetime import timedelta
+
         from app.core.security import create_access_token
 
         user = models.User(
@@ -246,8 +248,9 @@ class TestTokenFunctions:
 
     def test_token_with_nonexistent_user(self, client: TestClient, db):
         """Test token with valid format but non-existent user"""
-        from app.core.security import create_access_token
         import uuid
+
+        from app.core.security import create_access_token
 
         # Create token with non-existent user ID
         fake_user_id = str(uuid.uuid4())
