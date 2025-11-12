@@ -29,7 +29,7 @@ API para la gestión de videos de artistas emergentes con sistema de votación y
                         │
         ┌───────────────┼───────────────┐
         │    Auto Scaling Group         │
-        │  (1-5 instancias t3.small)    │
+        │  (1-3 instancias t3.small)    │
         │                               │
         │  ┌──────┐  ┌──────┐  ┌──────┐│
         │  │ Web  │  │ Web  │  │ Web  ││
@@ -61,7 +61,7 @@ API para la gestión de videos de artistas emergentes con sistema de votación y
 | Componente | Descripción | Tipo de Instancia |
 |------------|-------------|-------------------|
 | **Application Load Balancer** | Distribuye tráfico HTTP/HTTPS entre instancias web | - |
-| **Auto Scaling Group** | Escala automáticamente de 1 a 5 instancias según CPU | t3.small |
+| **Auto Scaling Group** | Escala automáticamente de 1 a 3 instancias según CPU | t3.small |
 | **Web Servers** | FastAPI + Gunicorn + Nginx + Redis (local) | t3.small (Multi-AZ) |
 | **Worker** | Celery + moviepy para procesamiento de videos | t3.small (Private subnet) |
 | **Amazon RDS** | PostgreSQL 16 administrado | db.t3.micro |
@@ -74,7 +74,7 @@ API para la gestión de videos de artistas emergentes con sistema de votación y
 |---------|-----------|-----------|-------------|
 | **Despliegue** | Docker local | 3 EC2 manuales | CloudFormation (IaC) |
 | **Load Balancing** | Nginx local | Ninguno | Application Load Balancer |
-| **Escalabilidad** | 1 contenedor | 1 instancia fija | Auto Scaling (1-5) |
+| **Escalabilidad** | 1 contenedor | 1 instancia fija | Auto Scaling (1-3) |
 | **Almacenamiento** | Volumen Docker | NFS compartido | Amazon S3 |
 | **Alta Disponibilidad** | No | Single-AZ | Multi-AZ |
 | **Capacidad probada** | 5-10 usuarios | 10-20 usuarios | **150 usuarios concurrentes** |
@@ -87,7 +87,7 @@ API para la gestión de videos de artistas emergentes con sistema de votación y
 
 | Documento | Descripción |
 |-----------|-------------|
-| **[Arquitectura AWS](docs/Entrega_3/arquitectura_aws.md)** | Arquitectura escalable completa con CloudFormation:<br>• Auto Scaling Group (1-5 instancias)<br>• Application Load Balancer<br>• Amazon S3 para videos<br>• Multi-AZ para alta disponibilidad<br>• Infraestructura como código<br>• Diagramas de arquitectura y flujos |
+| **[Arquitectura AWS](docs/Entrega_3/arquitectura_aws.md)** | Arquitectura escalable completa con CloudFormation:<br>• Auto Scaling Group (1-3 instancias)<br>• Application Load Balancer<br>• Amazon S3 para videos<br>• Multi-AZ para alta disponibilidad<br>• Infraestructura como código<br>• Diagramas de arquitectura y flujos |
 | **[Pruebas de Carga](capacity-planning/pruebas_de_carga_entrega3.md)** | Pruebas de capacidad con k6:<br>• **Escenario 1:** Capa Web - 150 VUs, 40,287 requests, 39.46 req/s<br>• **Escenario 2:** Upload y Procesamiento - 100% éxito<br>• Análisis de Auto Scaling bajo carga<br>• Comparación con Entrega 2 (650% mejora de capacidad)<br>• Identificación de umbrales de operación<br>• Recomendaciones de escalabilidad |
 | **[Guía de Despliegue CloudFormation](docs/Entrega_3/deployment/README.md)** | Despliegue automatizado con CloudFormation:<br>• Stack de infraestructura completo<br>• Configuración de parámetros<br>• Variables de entorno y secretos<br>• Troubleshooting y validación<br>• Scripts de apoyo para pruebas |
 | **[Reporte SonarQube](docs/Entrega_3/reporte_sonarqube.md)** | Análisis de calidad actualizado:<br>• Quality Gate: PASSED<br>• 0 bugs, 0 vulnerabilidades<br>• Coverage: 98.8%<br>• Soporte para S3 y presigned URLs<br>• Tests actualizados para S3 |
@@ -97,7 +97,7 @@ API para la gestión de videos de artistas emergentes con sistema de votación y
 - **[infrastructure.yaml](docs/Entrega_3/deployment/cloudformation/infrastructure.yaml)** - Template CloudFormation con:
   - VPC Multi-AZ (10.0.0.0/16)
   - Application Load Balancer
-  - Auto Scaling Group (1-5 instancias)
+  - Auto Scaling Group (1-3 instancias)
   - Amazon RDS PostgreSQL
   - S3 Bucket para videos
   - Worker en subnet privada
@@ -481,7 +481,7 @@ Resources:
   - 2 Subnets públicas (Multi-AZ)
   - 1 Subnet privada (Worker)
   - Application Load Balancer
-  - Auto Scaling Group (1-5 instancias)
+  - Auto Scaling Group (1-3 instancias)
   - RDS PostgreSQL (db.t3.micro)
   - S3 Bucket (videos)
   - Security Groups
@@ -563,7 +563,7 @@ Proyecto desarrollado para el curso **MISO4204 - Desarrollo en la Nube**
 |---------|----------------|------------------|
 | Storage | Volúmenes Docker | Amazon S3 |
 | Database | PostgreSQL container | Amazon RDS |
-| Scaling | No | Auto Scaling Group (1-5) |
+| Scaling | No | Auto Scaling Group (1-3) |
 | Load Balancer | Nginx local | Application Load Balancer |
 | Networking | Bridge network | VPC Multi-AZ |
 
