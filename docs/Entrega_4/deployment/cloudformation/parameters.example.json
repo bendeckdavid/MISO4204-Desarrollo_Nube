@@ -1,0 +1,34 @@
+[
+  {
+    "ParameterKey": "ProjectName",
+    "ParameterValue": "anb-video"
+  },
+  {
+    "ParameterKey": "KeyPairName",
+    "ParameterValue": "anb-key-pair"
+  },
+  {
+    "ParameterKey": "DBPassword",
+    "ParameterValue": "ChangeThisSecurePassword123!"
+  },
+  {
+    "ParameterKey": "MyIPAddress",
+    "ParameterValue": "1.2.3.4/32"
+  },
+  {
+    "ParameterKey": "GitHubRepo",
+    "ParameterValue": "https://github.com/bendeckdavid/MISO4204-Desarrollo_Nube.git"
+  },
+  {
+    "ParameterKey": "GitHubBranch",
+    "ParameterValue": "main"
+  },
+  {
+    "ParameterKey": "WebServerInstanceType",
+    "ParameterValue": "t3.small"
+  },
+  {
+    "ParameterKey": "WorkerInstanceType",
+    "ParameterValue": "t3.small"
+  }
+]
