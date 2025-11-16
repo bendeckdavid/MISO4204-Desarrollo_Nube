@@ -105,6 +105,36 @@ async def upload_video(
     }
 
 
+def _build_video_data(video: models.Video) -> dict:
+    """Build video data dictionary with basic info"""
+    return {
+        "video_id": str(video.id),
+        "title": video.title,
+        "status": video.status,
+        "uploaded_at": video.created_at.isoformat() if hasattr(video, "created_at") else None,
+        "votes": video.vote_count,
+    }
+
+
+def _add_processed_info(video_data: dict, video: models.Video) -> None:
+    """Add processed video information including URLs"""
+    video_data["processed_at"] = (
+        video.updated_at.isoformat() if hasattr(video, "updated_at") else None
+    )
+
+    # Generate presigned URL for S3, or regular URL for local storage
+    if settings.STORAGE_BACKEND == "s3":
+        try:
+            video_data["processed_url"] = storage.get_presigned_url(
+                video.processed_file_path, expiration=3600
+            )
+        except Exception as e:
+            print(f"Error generating presigned URL: {e}")
+            video_data["processed_url"] = None
+    else:
+        video_data["processed_url"] = f"https://anb.com/videos/processed/{video.id}.mp4"
+
+
 @router.get("/", response_model=List[VideoDetailResponse], status_code=status.HTTP_200_OK)
 def list_user_videos(
     current_user: models.User = Depends(get_current_user),
@@ -114,31 +144,10 @@ def list_user_videos(
 
     response = []
     for video in videos:
-        video_data = {
-            "video_id": str(video.id),
-            "title": video.title,
-            "status": video.status,
-            "uploaded_at": video.created_at.isoformat() if hasattr(video, "created_at") else None,
-            "votes": video.vote_count,
-        }
+        video_data = _build_video_data(video)
 
-        if video.status == "processed" or video.status == "completed":
-            video_data["processed_at"] = (
-                video.updated_at.isoformat() if hasattr(video, "updated_at") else None
-            )
-
-            # Generate presigned URL for S3, or regular URL for local storage
-            if settings.STORAGE_BACKEND == "s3":
-                try:
-                    # Generate presigned URL valid for 1 hour
-                    video_data["processed_url"] = storage.get_presigned_url(
-                        video.processed_file_path, expiration=3600
-                    )
-                except Exception as e:
-                    print(f"Error generating presigned URL: {e}")
-                    video_data["processed_url"] = None
-            else:
-                video_data["processed_url"] = f"https://anb.com/videos/processed/{video.id}.mp4"
+        if video.status in ("processed", "completed"):
+            _add_processed_info(video_data, video)
 
         response.append(video_data)
 

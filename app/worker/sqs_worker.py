@@ -73,12 +73,8 @@ def process_message(message: dict) -> bool:
         return False
 
 
-def main():  # pragma: no cover
-    """Main worker loop"""
-    # Register signal handlers for graceful shutdown
-    signal.signal(signal.SIGTERM, signal_handler)
-    signal.signal(signal.SIGINT, signal_handler)
-
+def _log_startup_info():  # pragma: no cover
+    """Log worker startup information"""
     logger.info("=" * 80)
     logger.info("Starting SQS Video Processing Worker (Entrega 4)")
     logger.info(f"Queue URL: {settings.SQS_QUEUE_URL}")
@@ -86,7 +82,9 @@ def main():  # pragma: no cover
     logger.info(f"Region: {settings.AWS_REGION}")
     logger.info("=" * 80)
 
-    # Check initial queue status
+
+def _check_initial_queue_status():  # pragma: no cover
+    """Check and log initial queue status"""
     try:
         attrs = sqs_service.get_queue_attributes()
         logger.info("Queue status at startup:")
@@ -99,44 +97,57 @@ def main():  # pragma: no cover
         dlq_count = sqs_service.get_dlq_messages_count()
         if dlq_count > 0:
             logger.warning(f"  - DLQ has {dlq_count} message(s) that need attention!")
-
     except Exception as e:
         logger.warning(f"Could not get initial queue status: {e}")
+
+
+def _process_messages(
+    consecutive_empty_polls: int, messages_processed: int
+) -> tuple:  # pragma: no cover
+    """Process messages from queue and return updated counters"""
+    messages = sqs_service.receive_messages(max_messages=1, wait_time=20)
+
+    if messages:
+        consecutive_empty_polls = 0
+        for message in messages:
+            if shutdown_requested:
+                logger.info("Shutdown requested, stopping message processing")
+                break
+
+            if process_message(message):
+                messages_processed += 1
+    else:
+        consecutive_empty_polls += 1
+        if consecutive_empty_polls % 3 == 0:
+            logger.debug(
+                f"No messages (empty polls: {consecutive_empty_polls}, "
+                f"total processed: {messages_processed})"
+            )
+
+    return consecutive_empty_polls, messages_processed
+
+
+def main():  # pragma: no cover
+    """Main worker loop"""
+    signal.signal(signal.SIGTERM, signal_handler)
+    signal.signal(signal.SIGINT, signal_handler)
+
+    _log_startup_info()
+    _check_initial_queue_status()
 
     consecutive_empty_polls = 0
     messages_processed = 0
 
     while not shutdown_requested:
         try:
-            # Long polling (20 seconds)
-            messages = sqs_service.receive_messages(max_messages=1, wait_time=20)
-
-            if messages:
-                consecutive_empty_polls = 0
-                for message in messages:
-                    if shutdown_requested:
-                        logger.info("Shutdown requested, stopping message processing")
-                        break
-
-                    success = process_message(message)
-                    if success:
-                        messages_processed += 1
-
-            else:
-                consecutive_empty_polls += 1
-                if consecutive_empty_polls % 3 == 0:  # Every 3 empty polls (~1 minute)
-                    logger.debug(
-                        f"No messages (empty polls: {consecutive_empty_polls}, "
-                        f"total processed: {messages_processed})"
-                    )
-
+            consecutive_empty_polls, messages_processed = _process_messages(
+                consecutive_empty_polls, messages_processed
+            )
         except KeyboardInterrupt:
             logger.info("Keyboard interrupt received, shutting down...")
             break
-
         except Exception as e:
             logger.error(f"Worker error: {e}", exc_info=True)
-            # Sleep before retrying to avoid tight error loops
             time.sleep(5)
 
     logger.info("=" * 80)
