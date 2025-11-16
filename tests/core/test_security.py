@@ -26,7 +26,7 @@ class TestGetCurrentUserOptional:
         """Test with token that doesn't have 'sub' claim"""
         from datetime import datetime, timedelta, timezone
 
-        import jwt
+        from jose import jwt
 
         from app.core.config import settings
         from app.core.security import ALGORITHM
