@@ -1,0 +1,31 @@
+{
+  "id": "anb-entrega4-env",
+  "name": "ANB Entrega 4 Environment - SQS",
+  "values": [
+    {
+      "key": "base_url",
+      "value": "http://anb-video-alb-1931734891.us-east-1.elb.amazonaws.com",
+      "enabled": true,
+      "type": "default"
+    },
+    {
+      "key": "access_token",
+      "value": "",
+      "enabled": true,
+      "type": "secret"
+    },
+    {
+      "key": "user_id",
+      "value": "",
+      "enabled": true,
+      "type": "default"
+    },
+    {
+      "key": "video_id",
+      "value": "",
+      "enabled": true,
+      "type": "default"
+    }
+  ],
+  "_postman_variable_scope": "environment"
+}

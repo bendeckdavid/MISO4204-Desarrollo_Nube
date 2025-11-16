@@ -1,11 +1,12 @@
 """Tests for video management endpoints"""
 import io
 from unittest.mock import patch
+
 from fastapi import status
 from fastapi.testclient import TestClient
 
-from app.db import models
 from app.core.security import create_access_token
+from app.db import models
 
 
 class TestVideoUpload:

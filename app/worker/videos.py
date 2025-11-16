@@ -1,13 +1,17 @@
-"""Celery tasks - Video processing"""
+"""Video processing tasks for SQS worker (Entrega 4)"""
 
+import logging
 import os
 import tempfile
-from app.db.database import SessionLocal
-from app.worker.celery_app import celery_app
-from app.db.models import Video
+
+from moviepy import CompositeVideoClip, TextClip, VideoFileClip
+
 from app.core.config import settings
 from app.core.storage import storage
-from moviepy import VideoFileClip, TextClip, CompositeVideoClip
+from app.db.database import SessionLocal
+from app.db.models import Video
+
+logger = logging.getLogger(__name__)
 
 
 def resolve_container_path(file_path: str, fallback_base_dir: str = "/app") -> str:
@@ -143,15 +147,20 @@ def _cleanup_temp_files(temp_original, temp_processed):
             pass
 
 
-@celery_app.task(bind=True, max_retries=3)
-def process_video(self, video_id: str):
-    """Process video task with proper database session management
+def process_video_sync(video_id: str) -> dict:
+    """
+    Process video - synchronous version for SQS worker (Entrega 4)
 
     Supports both local and S3 storage backends.
     For S3: Downloads to temp, processes, uploads back to S3
     For local: Processes directly on disk
-    """
 
+    Args:
+        video_id: UUID of the video to process
+
+    Returns:
+        dict with status and message/error
+    """
     db = SessionLocal()
     temp_original = None
     temp_processed = None
@@ -166,6 +175,8 @@ def process_video(self, video_id: str):
         video.status = "processing"
         db.commit()
 
+        logger.info(f"Starting processing for video {video_id}")
+
         # Setup file paths based on storage backend
         original_path, processed_path, temp_original, temp_processed = _setup_file_paths(
             video, settings
@@ -176,6 +187,7 @@ def process_video(self, video_id: str):
 
         # Upload processed video if using S3
         if settings.STORAGE_BACKEND == "s3":
+            logger.info(f"Uploading processed video to S3: {video.processed_file_path}")
             with open(processed_path, "rb") as f:
                 processed_data = f.read()
             storage.upload_file(processed_data, video.processed_file_path)
@@ -185,9 +197,12 @@ def process_video(self, video_id: str):
         video.is_published = True
         db.commit()
 
+        logger.info(f"Successfully processed video {video_id}")
         return {"status": "success", "message": f"Video {video_id} processed successfully"}
 
     except Exception as e:
+        logger.error(f"Error processing video {video_id}: {e}", exc_info=True)
+
         # Update video status to failed
         try:
             video = db.query(Video).filter(Video.id == video_id).first()
@@ -195,10 +210,9 @@ def process_video(self, video_id: str):
                 video.status = "failed"
                 db.commit()
         except Exception as db_error:
-            print(f"Database error while updating status to failed: {db_error}")
+            logger.error(f"Database error while updating status to failed: {db_error}")
 
-        # Retry the task with exponential backoff
-        raise self.retry(exc=e, countdown=60, max_retries=3)
+        return {"status": "failed", "error": str(e)}
 
     finally:
         _cleanup_temp_files(temp_original, temp_processed)

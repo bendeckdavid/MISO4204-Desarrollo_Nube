@@ -1,0 +1,1101 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'ANB Rising Stars - Entrega 4: Scalable Batch/Worker Layer with SQS, Multi-AZ, and Worker Auto Scaling'
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: anb-video
+    Description: Project name used for resource naming
+
+  KeyPairName:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: EC2 Key Pair for SSH access
+    ConstraintDescription: Must be an existing EC2 Key Pair
+
+  LatestAMI:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/canonical/ubuntu/server/22.04/stable/current/amd64/hvm/ebs-gp2/ami-id
+    Description: Latest Ubuntu 22.04 LTS AMI
+
+  WebServerInstanceType:
+    Type: String
+    Default: t3.small
+    AllowedValues:
+      - t3.micro
+      - t3.small
+      - t3.medium
+    Description: Web Server instance type (2 vCPU, 2 GiB RAM)
+
+  WorkerInstanceType:
+    Type: String
+    Default: t3.small
+    AllowedValues:
+      - t3.micro
+      - t3.small
+      - t3.medium
+    Description: Worker instance type
+
+  DBPassword:
+    Type: String
+    NoEcho: true
+    MinLength: 8
+    MaxLength: 41
+    Description: RDS PostgreSQL master password (8-41 characters)
+    ConstraintDescription: Must be 8-41 characters
+
+  MyIPAddress:
+    Type: String
+    Description: Your IP address for SSH access (format x.x.x.x/32)
+    AllowedPattern: (\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})
+    ConstraintDescription: Must be a valid CIDR format (e.g., 1.2.3.4/32)
+
+  GitHubRepo:
+    Type: String
+    Default: https://github.com/bendeckdavid/MISO4204-Desarrollo_Nube.git
+    Description: GitHub repository URL
+
+  GitHubBranch:
+    Type: String
+    Default: main
+    Description: GitHub branch to deploy
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "Project Configuration"
+        Parameters:
+          - ProjectName
+          - KeyPairName
+          - MyIPAddress
+      - Label:
+          default: "Instance Configuration"
+        Parameters:
+          - LatestAMI
+          - WebServerInstanceType
+          - WorkerInstanceType
+      - Label:
+          default: "Database Configuration"
+        Parameters:
+          - DBPassword
+      - Label:
+          default: "Application Configuration"
+        Parameters:
+          - GitHubRepo
+          - GitHubBranch
+
+Resources:
+  #############################################################################
+  # VPC and Networking
+  #############################################################################
+
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-vpc'
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-igw'
+
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.1.0/24
+      AvailabilityZone: !Select [0, !GetAZs '']
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-public-subnet-1'
+
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.2.0/24
+      AvailabilityZone: !Select [1, !GetAZs '']
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-public-subnet-2'
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-public-rt'
+
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: AttachGateway
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  SubnetRouteTableAssociation1:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet1
+      RouteTableId: !Ref PublicRouteTable
+
+  SubnetRouteTableAssociation2:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet2
+      RouteTableId: !Ref PublicRouteTable
+
+  #############################################################################
+  # S3 Bucket for Video Storage
+  #############################################################################
+
+  VideoStorageBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Delete
+    Properties:
+      BucketName: !Sub '${ProjectName}-videos-${AWS::AccountId}'
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration:
+        Status: Suspended
+      LifecycleConfiguration:
+        Rules:
+          - Id: DeleteOldVersions
+            Status: Enabled
+            NoncurrentVersionExpirationInDays: 7
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-videos'
+
+  # Lambda function to empty S3 bucket on stack deletion
+  EmptyS3BucketFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${ProjectName}-empty-bucket'
+      Runtime: python3.11
+      Handler: index.lambda_handler
+      Role: arn:aws:iam::240377264548:role/LabRole
+      Timeout: 300
+      Code:
+        ZipFile: |
+          import boto3
+          import cfnresponse
+          import logging
+
+          logger = logging.getLogger()
+          logger.setLevel(logging.INFO)
+          s3 = boto3.resource('s3')
+
+          def lambda_handler(event, context):
+              logger.info(f'Event: {event}')
+              bucket_name = event['ResourceProperties']['BucketName']
+
+              try:
+                  if event['RequestType'] == 'Delete':
+                      logger.info(f'Deleting all objects in bucket: {bucket_name}')
+                      bucket = s3.Bucket(bucket_name)
+
+                      # Delete all objects and versions
+                      bucket.object_versions.delete()
+                      logger.info(f'Successfully deleted all objects from {bucket_name}')
+
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+              except Exception as e:
+                  logger.error(f'Error: {str(e)}')
+                  cfnresponse.send(event, context, cfnresponse.FAILED, {'Error': str(e)})
+
+  # Custom resource to trigger bucket emptying
+  EmptyS3BucketOnDelete:
+    Type: Custom::EmptyS3Bucket
+    Properties:
+      ServiceToken: !GetAtt EmptyS3BucketFunction.Arn
+      BucketName: !Ref VideoStorageBucket
+
+  #############################################################################
+  # SQS Queues for Video Processing (NEW - Entrega 4)
+  #############################################################################
+
+  # Dead Letter Queue (DLQ) - for failed messages
+  VideoProcessingDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${ProjectName}-processing-dlq'
+      MessageRetentionPeriod: 1209600  # 14 days
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-processing-dlq'
+        - Key: Purpose
+          Value: Dead Letter Queue for failed video processing tasks
+
+  # Main Processing Queue
+  VideoProcessingQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${ProjectName}-processing-queue'
+      VisibilityTimeout: 900  # 15 minutes (task timeout)
+      MessageRetentionPeriod: 345600  # 4 days
+      ReceiveMessageWaitTimeSeconds: 20  # Enable long polling
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt VideoProcessingDLQ.Arn
+        maxReceiveCount: 3  # Retry 3 times before moving to DLQ
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-processing-queue'
+        - Key: Purpose
+          Value: Main queue for video processing tasks
+
+  #############################################################################
+  # IAM Instance Profile (Using AWS Academy LabRole)
+  #############################################################################
+  # Note: AWS Academy doesn't allow creating custom IAM Roles
+  # We use the existing LabRole which has S3, EC2, and CloudWatch permissions
+
+  #############################################################################
+  # CloudWatch Log Groups
+  #############################################################################
+
+  WebServerLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/ec2/${ProjectName}-web'
+      RetentionInDays: 7
+
+  WorkerLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/ec2/${ProjectName}-worker'
+      RetentionInDays: 7
+
+  #############################################################################
+  # Security Groups
+  #############################################################################
+
+  ALBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub '${ProjectName}-alb-sg'
+      GroupDescription: Security group for Application Load Balancer
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+          Description: HTTP from Internet
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+          Description: Allow all outbound
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-alb-sg'
+
+  WebServerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub '${ProjectName}-web-sg'
+      GroupDescription: Security group for Web Servers
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 8080
+          ToPort: 8080
+          SourceSecurityGroupId: !Ref ALBSecurityGroup
+          Description: HTTP from ALB
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: !Ref MyIPAddress
+          Description: SSH from my IP
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+          Description: Allow all outbound
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-web-sg'
+
+  # NOTE: Redis ingress rule removed in Entrega 4 - now using SQS instead
+
+  WorkerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub '${ProjectName}-worker-sg'
+      GroupDescription: Security group for Celery Worker
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: !Ref MyIPAddress
+          Description: SSH from my IP
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+          Description: Allow all outbound
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-worker-sg'
+
+  RDSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub '${ProjectName}-rds-sg'
+      GroupDescription: Security group for RDS PostgreSQL
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          SourceSecurityGroupId: !Ref WebServerSecurityGroup
+          Description: PostgreSQL from Web Servers
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          SourceSecurityGroupId: !Ref WorkerSecurityGroup
+          Description: PostgreSQL from Worker
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+          Description: Allow all outbound
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-rds-sg'
+
+  #############################################################################
+  # RDS PostgreSQL Database
+  #############################################################################
+
+  DBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupName: !Sub '${ProjectName}-db-subnet-group'
+      DBSubnetGroupDescription: Subnet group for RDS
+      SubnetIds:
+        - !Ref PublicSubnet1
+        - !Ref PublicSubnet2
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-db-subnet-group'
+
+  RDSDatabase:
+    Type: AWS::RDS::DBInstance
+    DeletionPolicy: Snapshot
+    Properties:
+      DBInstanceIdentifier: !Sub '${ProjectName}-db'
+      DBName: fastapi_db
+      Engine: postgres
+      EngineVersion: '16.10'
+      DBInstanceClass: db.t3.micro
+      AllocatedStorage: 20
+      StorageType: gp3
+      MasterUsername: fastapi_user
+      MasterUserPassword: !Ref DBPassword
+      VPCSecurityGroups:
+        - !Ref RDSSecurityGroup
+      DBSubnetGroupName: !Ref DBSubnetGroup
+      PubliclyAccessible: false
+      BackupRetentionPeriod: 0
+      DeleteAutomatedBackups: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-db'
+
+  #############################################################################
+  # Application Load Balancer
+  #############################################################################
+
+  ApplicationLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: !Sub '${ProjectName}-alb'
+      Type: application
+      Scheme: internet-facing
+      IpAddressType: ipv4
+      Subnets:
+        - !Ref PublicSubnet1
+        - !Ref PublicSubnet2
+      SecurityGroups:
+        - !Ref ALBSecurityGroup
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-alb'
+
+  ALBTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: !Sub '${ProjectName}-tg'
+      Port: 8080
+      Protocol: HTTP
+      VpcId: !Ref VPC
+      TargetType: instance
+      HealthCheckEnabled: true
+      HealthCheckProtocol: HTTP
+      HealthCheckPath: /health
+      HealthCheckIntervalSeconds: 30
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 3
+      Matcher:
+        HttpCode: 200
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-tg'
+
+  ALBListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Port: 80
+      Protocol: HTTP
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref ALBTargetGroup
+
+  #############################################################################
+  # Launch Template for Web Servers
+  #############################################################################
+
+  WebServerLaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateName: !Sub '${ProjectName}-web-lt'
+      LaunchTemplateData:
+        ImageId: !Ref LatestAMI
+        InstanceType: !Ref WebServerInstanceType
+        KeyName: !Ref KeyPairName
+        IamInstanceProfile:
+          Name: LabInstanceProfile
+        SecurityGroupIds:
+          - !Ref WebServerSecurityGroup
+        BlockDeviceMappings:
+          - DeviceName: /dev/sda1
+            Ebs:
+              VolumeSize: 30
+              VolumeType: gp3
+              DeleteOnTermination: true
+        TagSpecifications:
+          - ResourceType: instance
+            Tags:
+              - Key: Name
+                Value: !Sub '${ProjectName}-web'
+        UserData:
+          Fn::Base64: !Sub |
+            #!/bin/bash
+            set -e
+            exec > >(tee /var/log/user-data.log) 2>&1
+
+            echo "=== Starting Web Server Setup ==="
+            echo "Timestamp: $(date)"
+
+            # Update system
+            apt-get update
+            DEBIAN_FRONTEND=noninteractive apt-get upgrade -y
+
+            # Install dependencies
+            apt-get install -y \
+              python3.11 \
+              python3.11-venv \
+              python3.11-dev \
+              python3-pip \
+              git \
+              nginx \
+              curl \
+              postgresql-client
+
+            # Install CloudWatch Agent
+            wget https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb
+            dpkg -i -E ./amazon-cloudwatch-agent.deb
+            rm amazon-cloudwatch-agent.deb
+
+            # Configure CloudWatch Agent
+            cat > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json <<'CWEOF'
+            {
+              "logs": {
+                "logs_collected": {
+                  "files": {
+                    "collect_list": [
+                      {
+                        "file_path": "/var/log/user-data.log",
+                        "log_group_name": "/aws/ec2/${ProjectName}-web",
+                        "log_stream_name": "{instance_id}/user-data.log"
+                      },
+                      {
+                        "file_path": "/var/log/syslog",
+                        "log_group_name": "/aws/ec2/${ProjectName}-web",
+                        "log_stream_name": "{instance_id}/syslog"
+                      },
+                      {
+                        "file_path": "/var/log/nginx/access.log",
+                        "log_group_name": "/aws/ec2/${ProjectName}-web",
+                        "log_stream_name": "{instance_id}/nginx-access.log"
+                      },
+                      {
+                        "file_path": "/var/log/nginx/error.log",
+                        "log_group_name": "/aws/ec2/${ProjectName}-web",
+                        "log_stream_name": "{instance_id}/nginx-error.log"
+                      }
+                    ]
+                  }
+                },
+                "log_stream_name": "{instance_id}"
+              },
+              "metrics": {
+                "namespace": "ANBVideo/WebServer",
+                "metrics_collected": {
+                  "cpu": {
+                    "measurement": [
+                      {
+                        "name": "cpu_usage_idle",
+                        "rename": "CPU_IDLE",
+                        "unit": "Percent"
+                      }
+                    ],
+                    "metrics_collection_interval": 60
+                  },
+                  "mem": {
+                    "measurement": [
+                      {
+                        "name": "mem_used_percent",
+                        "rename": "MEM_USED",
+                        "unit": "Percent"
+                      }
+                    ],
+                    "metrics_collection_interval": 60
+                  }
+                }
+              }
+            }
+            CWEOF
+
+            # Start CloudWatch Agent
+            /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
+              -a fetch-config \
+              -m ec2 \
+              -s \
+              -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
+
+            # Create app directory first
+            mkdir -p /app
+
+            # Set Python 3.11 as default BEFORE cloning
+            update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1
+            update-alternatives --set python3 /usr/bin/python3.11
+
+            # Verify Python version
+            python3 --version
+
+            # Install Poetry with Python 3.11
+            curl -sSL https://install.python-poetry.org | python3.11 -
+            export PATH="/root/.local/bin:$PATH"
+
+            # Clone repository
+            cd /app
+            git clone ${GitHubRepo} .
+            git checkout ${GitHubBranch}
+
+            # Configure Poetry to not create virtualenv (install globally)
+            /root/.local/bin/poetry config virtualenvs.create false
+
+            # Install Python dependencies
+            /root/.local/bin/poetry install --without dev --no-root --no-interaction
+
+            # Generate SECRET_KEY
+            SECRET_KEY=$(openssl rand -hex 32)
+
+            # Configure environment variables
+            cat > /app/.env <<EOF
+            # Database
+            DATABASE_URL=postgresql://fastapi_user:${DBPassword}@${RDSDatabase.Endpoint.Address}:5432/fastapi_db
+
+            # API Security
+            SECRET_KEY=$SECRET_KEY
+            ACCESS_TOKEN_EXPIRE_MINUTES=1440
+
+            # SQS Configuration (NEW - Entrega 4)
+            SQS_QUEUE_URL=${VideoProcessingQueue}
+            SQS_DLQ_URL=${VideoProcessingDLQ}
+
+            # Environment
+            ENVIRONMENT=production
+
+            # Storage Configuration - S3
+            STORAGE_BACKEND=s3
+            AWS_S3_BUCKET=${VideoStorageBucket}
+            AWS_REGION=${AWS::Region}
+            S3_UPLOAD_PREFIX=uploads/
+            S3_PROCESSED_PREFIX=processed/
+            EOF
+
+            # NOTE: Redis removed in Entrega 4 - using SQS instead
+
+            # Run database migrations
+            cd /app
+            python3 -m alembic upgrade head || echo "Migration failed or no migrations"
+
+            # Configure Gunicorn systemd service
+            cat > /etc/systemd/system/fastapi.service <<EOF
+            [Unit]
+            Description=FastAPI Application with Gunicorn
+            After=network.target
+
+            [Service]
+            User=root
+            WorkingDirectory=/app
+            EnvironmentFile=/app/.env
+            ExecStart=/usr/local/bin/gunicorn app.main:app --workers 4 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000
+            Restart=always
+            RestartSec=10
+            StandardOutput=journal
+            StandardError=journal
+
+            [Install]
+            WantedBy=multi-user.target
+            EOF
+
+            # Configure Nginx
+            cat > /etc/nginx/sites-available/fastapi <<EOF
+            upstream fastapi {
+                server 127.0.0.1:8000;
+            }
+
+            server {
+                listen 8080;
+                server_name _;
+
+                client_max_body_size 50M;
+
+                location / {
+                    proxy_pass http://fastapi;
+                    proxy_set_header Host \$host;
+                    proxy_set_header X-Real-IP \$remote_addr;
+                    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+                    proxy_set_header X-Forwarded-Proto \$scheme;
+                    proxy_connect_timeout 300;
+                    proxy_send_timeout 300;
+                    proxy_read_timeout 300;
+                }
+
+                location /health {
+                    proxy_pass http://fastapi/health;
+                    access_log off;
+                }
+            }
+            EOF
+
+            ln -sf /etc/nginx/sites-available/fastapi /etc/nginx/sites-enabled/
+            rm -f /etc/nginx/sites-enabled/default
+            nginx -t
+
+            # Start services
+            systemctl daemon-reload
+            systemctl enable fastapi
+            systemctl start fastapi
+            systemctl restart nginx
+
+            echo "=== Web Server Setup Complete ==="
+
+  #############################################################################
+  # Auto Scaling Group
+  #############################################################################
+
+  WebServerAutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    DependsOn:
+      - RDSDatabase
+    Properties:
+      AutoScalingGroupName: !Sub '${ProjectName}-web-asg'
+      LaunchTemplate:
+        LaunchTemplateId: !Ref WebServerLaunchTemplate
+        Version: !GetAtt WebServerLaunchTemplate.LatestVersionNumber
+      MinSize: 1
+      MaxSize: 3
+      DesiredCapacity: 1
+      HealthCheckType: ELB
+      HealthCheckGracePeriod: 300
+      VPCZoneIdentifier:
+        - !Ref PublicSubnet1
+        - !Ref PublicSubnet2
+      TargetGroupARNs:
+        - !Ref ALBTargetGroup
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-web-asg'
+          PropagateAtLaunch: true
+
+  #############################################################################
+  # Auto Scaling Policies
+  #############################################################################
+
+  ScaleUpPolicy:
+    Type: AWS::AutoScaling::ScalingPolicy
+    Properties:
+      AutoScalingGroupName: !Ref WebServerAutoScalingGroup
+      PolicyType: TargetTrackingScaling
+      TargetTrackingConfiguration:
+        PredefinedMetricSpecification:
+          PredefinedMetricType: ASGAverageCPUUtilization
+        TargetValue: 75.0
+
+  #############################################################################
+  # Worker Launch Template and Auto Scaling Group (NEW - Entrega 4)
+  #############################################################################
+
+  WorkerLaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    DependsOn:
+      - VideoProcessingQueue
+      - VideoProcessingDLQ
+    Properties:
+      LaunchTemplateName: !Sub '${ProjectName}-worker-lt'
+      LaunchTemplateData:
+        ImageId: !Ref LatestAMI
+        InstanceType: !Ref WorkerInstanceType
+        KeyName: !Ref KeyPairName
+        IamInstanceProfile:
+          Name: LabInstanceProfile
+        SecurityGroupIds:
+          - !Ref WorkerSecurityGroup
+        BlockDeviceMappings:
+          - DeviceName: /dev/sda1
+            Ebs:
+              VolumeSize: 30
+              VolumeType: gp3
+              DeleteOnTermination: true
+        TagSpecifications:
+          - ResourceType: instance
+            Tags:
+              - Key: Name
+                Value: !Sub '${ProjectName}-worker'
+        UserData:
+          Fn::Base64: !Sub |
+            #!/bin/bash
+            set -e
+            exec > >(tee /var/log/user-data.log) 2>&1
+
+            echo "=== Starting SQS Worker Setup - Entrega 4 ==="
+            echo "Timestamp: $(date)"
+
+            # Update system
+            apt-get update
+            DEBIAN_FRONTEND=noninteractive apt-get upgrade -y
+
+            # Install dependencies (NO redis-tools needed anymore)
+            apt-get install -y \
+              python3.11 \
+              python3.11-venv \
+              python3.11-dev \
+              python3-pip \
+              git \
+              ffmpeg \
+              curl \
+              postgresql-client \
+              unzip \
+              jq
+
+            # Install AWS CLI v2
+            cd /tmp
+            curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+            unzip -q awscliv2.zip
+            ./aws/install
+            rm -rf aws awscliv2.zip
+            cd /
+
+            # Install CloudWatch Agent
+            wget https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb
+            dpkg -i -E ./amazon-cloudwatch-agent.deb
+            rm amazon-cloudwatch-agent.deb
+
+            # Configure CloudWatch Agent
+            cat > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json <<'CWEOF'
+            {
+              "logs": {
+                "logs_collected": {
+                  "files": {
+                    "collect_list": [
+                      {
+                        "file_path": "/var/log/user-data.log",
+                        "log_group_name": "/aws/ec2/${ProjectName}-worker",
+                        "log_stream_name": "{instance_id}/user-data.log"
+                      },
+                      {
+                        "file_path": "/var/log/syslog",
+                        "log_group_name": "/aws/ec2/${ProjectName}-worker",
+                        "log_stream_name": "{instance_id}/syslog"
+                      },
+                      {
+                        "file_path": "/var/log/sqs-worker.log",
+                        "log_group_name": "/aws/ec2/${ProjectName}-worker",
+                        "log_stream_name": "{instance_id}/sqs-worker.log"
+                      }
+                    ]
+                  }
+                },
+                "log_stream_name": "{instance_id}"
+              },
+              "metrics": {
+                "namespace": "ANBVideo/Worker",
+                "metrics_collected": {
+                  "cpu": {
+                    "measurement": [
+                      {
+                        "name": "cpu_usage_idle",
+                        "rename": "CPU_IDLE",
+                        "unit": "Percent"
+                      }
+                    ],
+                    "metrics_collection_interval": 60
+                  },
+                  "mem": {
+                    "measurement": [
+                      {
+                        "name": "mem_used_percent",
+                        "rename": "MEM_USED",
+                        "unit": "Percent"
+                      }
+                    ],
+                    "metrics_collection_interval": 60
+                  }
+                }
+              }
+            }
+            CWEOF
+
+            # Start CloudWatch Agent
+            /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
+              -a fetch-config \
+              -m ec2 \
+              -s \
+              -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
+
+            # Create app directory first
+            mkdir -p /app
+
+            # Set Python 3.11 as default BEFORE cloning
+            update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1
+            update-alternatives --set python3 /usr/bin/python3.11
+
+            # Verify Python version
+            python3 --version
+
+            # Install Poetry with Python 3.11
+            curl -sSL https://install.python-poetry.org | python3.11 -
+            export PATH="/root/.local/bin:$PATH"
+
+            # Clone repository
+            cd /app
+            git clone ${GitHubRepo} .
+            git checkout ${GitHubBranch}
+
+            # Configure Poetry to not create virtualenv (install globally)
+            /root/.local/bin/poetry config virtualenvs.create false
+
+            # Install Python dependencies
+            /root/.local/bin/poetry install --without dev --no-root --no-interaction
+
+            # Generate SECRET_KEY (for JWT verification)
+            SECRET_KEY=$(openssl rand -hex 32)
+
+            # Get SQS Queue URLs
+            echo "Getting SQS Queue URLs..."
+            SQS_QUEUE_URL="${VideoProcessingQueue}"
+            SQS_DLQ_URL="${VideoProcessingDLQ}"
+
+            echo "Main Queue URL: $SQS_QUEUE_URL"
+            echo "DLQ URL: $SQS_DLQ_URL"
+
+            # Configure environment variables
+            cat > /app/.env <<EOF
+            # Database
+            DATABASE_URL=postgresql://fastapi_user:${DBPassword}@${RDSDatabase.Endpoint.Address}:5432/fastapi_db
+
+            # API Security
+            SECRET_KEY=$SECRET_KEY
+            ACCESS_TOKEN_EXPIRE_MINUTES=1440
+
+            # SQS Configuration (NEW - Entrega 4)
+            SQS_QUEUE_URL=$SQS_QUEUE_URL
+            SQS_DLQ_URL=$SQS_DLQ_URL
+
+            # Environment
+            ENVIRONMENT=production
+
+            # Storage Configuration - S3
+            STORAGE_BACKEND=s3
+            AWS_S3_BUCKET=${VideoStorageBucket}
+            AWS_REGION=${AWS::Region}
+            S3_UPLOAD_PREFIX=uploads/
+            S3_PROCESSED_PREFIX=processed/
+            EOF
+
+            # Configure SQS Worker systemd service
+            cat > /etc/systemd/system/sqs-worker.service <<'EOF'
+            [Unit]
+            Description=SQS Video Processing Worker
+            After=network.target
+
+            [Service]
+            Type=simple
+            User=root
+            WorkingDirectory=/app
+            EnvironmentFile=/app/.env
+            ExecStart=/usr/bin/python3 -m app.worker.sqs_worker
+            Restart=always
+            RestartSec=10
+            StandardOutput=append:/var/log/sqs-worker.log
+            StandardError=append:/var/log/sqs-worker.log
+
+            [Install]
+            WantedBy=multi-user.target
+            EOF
+
+            # Create log file
+            touch /var/log/sqs-worker.log
+            chmod 666 /var/log/sqs-worker.log
+
+            # Start SQS Worker
+            systemctl daemon-reload
+            systemctl enable sqs-worker
+            systemctl start sqs-worker
+
+            # Wait a bit for worker to start
+            sleep 5
+
+            # Check worker status
+            systemctl status sqs-worker --no-pager || true
+
+            echo "=== SQS Worker Setup Complete ==="
+
+  # Worker Auto Scaling Group
+  WorkerAutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    DependsOn:
+      - RDSDatabase
+      - VideoProcessingQueue
+    Properties:
+      AutoScalingGroupName: !Sub '${ProjectName}-worker-asg'
+      LaunchTemplate:
+        LaunchTemplateId: !Ref WorkerLaunchTemplate
+        Version: !GetAtt WorkerLaunchTemplate.LatestVersionNumber
+      MinSize: 1
+      MaxSize: 3
+      DesiredCapacity: 1
+      HealthCheckType: EC2
+      HealthCheckGracePeriod: 300
+      VPCZoneIdentifier:
+        - !Ref PublicSubnet1
+        - !Ref PublicSubnet2  # Multi-AZ
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-worker-asg'
+          PropagateAtLaunch: true
+
+  #############################################################################
+  # Worker Auto Scaling Policies - Based on SQS Queue Depth
+  #############################################################################
+
+  WorkerScaleOutPolicy:
+    Type: AWS::AutoScaling::ScalingPolicy
+    Properties:
+      AutoScalingGroupName: !Ref WorkerAutoScalingGroup
+      PolicyType: TargetTrackingScaling
+      TargetTrackingConfiguration:
+        CustomizedMetricSpecification:
+          MetricName: ApproximateNumberOfMessagesVisible
+          Namespace: AWS/SQS
+          Dimensions:
+            - Name: QueueName
+              Value: !GetAtt VideoProcessingQueue.QueueName
+          Statistic: Average
+        TargetValue: 5.0  # Scale when queue has 5+ messages per worker
+
+Outputs:
+  VPCId:
+    Description: VPC ID
+    Value: !Ref VPC
+    Export:
+      Name: !Sub '${ProjectName}-VPCId'
+
+  S3BucketName:
+    Description: S3 Bucket for video storage
+    Value: !Ref VideoStorageBucket
+    Export:
+      Name: !Sub '${ProjectName}-S3Bucket'
+
+  ALBDNSName:
+    Description: Application Load Balancer DNS Name
+    Value: !GetAtt ApplicationLoadBalancer.DNSName
+    Export:
+      Name: !Sub '${ProjectName}-ALBDNSName'
+
+  ALBURL:
+    Description: Application URL
+    Value: !Sub 'http://${ApplicationLoadBalancer.DNSName}'
+
+  RDSEndpoint:
+    Description: RDS PostgreSQL Endpoint
+    Value: !GetAtt RDSDatabase.Endpoint.Address
+    Export:
+      Name: !Sub '${ProjectName}-RDSEndpoint'
+
+  WorkerAutoScalingGroupName:
+    Description: Worker Auto Scaling Group Name
+    Value: !Ref WorkerAutoScalingGroup
+    Export:
+      Name: !Sub '${ProjectName}-WorkerASGName'
+
+  WebServerAutoScalingGroupName:
+    Description: Web Server Auto Scaling Group Name
+    Value: !Ref WebServerAutoScalingGroup
+    Export:
+      Name: !Sub '${ProjectName}-WebASGName'
+
+  SQSQueueURL:
+    Description: SQS Queue URL for video processing
+    Value: !Ref VideoProcessingQueue
+    Export:
+      Name: !Sub '${ProjectName}-SQSQueueURL'
+
+  SQSQueueARN:
+    Description: SQS Queue ARN
+    Value: !GetAtt VideoProcessingQueue.Arn
+    Export:
+      Name: !Sub '${ProjectName}-SQSQueueARN'
+
+  SQSDLQUrl:
+    Description: SQS Dead Letter Queue URL
+    Value: !Ref VideoProcessingDLQ
+    Export:
+      Name: !Sub '${ProjectName}-SQSDLQUrl'
+
+  WebServerLogGroup:
+    Description: CloudWatch Log Group for Web Servers
+    Value: !Ref WebServerLogGroup
+
+  WorkerLogGroup:
+    Description: CloudWatch Log Group for Worker
+    Value: !Ref WorkerLogGroup

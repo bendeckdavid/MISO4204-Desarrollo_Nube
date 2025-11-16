@@ -1,16 +1,17 @@
 """Video endpoints for ANB Rising Stars Showcase"""
 
-from fastapi import APIRouter, Depends, status, HTTPException, UploadFile, File, Form
-from sqlalchemy.orm import Session
 from typing import List
+
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.security import get_current_user
 from app.core.storage import storage
 from app.db import models
 from app.db.database import get_db
-from app.schemas.video import VideoUploadResponse, VideoDetailResponse, VideoDeleteResponse
-from app.worker.videos import process_video
+from app.schemas.video import VideoDeleteResponse, VideoDetailResponse, VideoUploadResponse
+from app.services.queue import sqs_service
 
 router = APIRouter()
 
@@ -87,8 +88,16 @@ async def upload_video(
             detail=f"Failed to save uploaded file: {str(e)}",
         )
 
-    # Dispatch Celery task to process the video asynchronously
-    process_video.apply_async(args=[new_video_id])
+    # Send message to SQS for asynchronous video processing (Entrega 4)
+    try:
+        sqs_service.send_message(
+            video_id=new_video_id, metadata={"title": title, "user_id": str(current_user.id)}
+        )
+    except Exception as e:
+        # If SQS fails, we still have the video uploaded but not queued for processing
+        # Log the error but don't fail the upload
+        print(f"Warning: Failed to queue video for processing: {e}")
+        # In production, you might want to retry or alert
 
     return {
         "video_id": new_video_id,

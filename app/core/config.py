@@ -35,9 +35,9 @@ class Settings(BaseSettings):
     DB_POOL_TIMEOUT: int = 30
     DB_POOL_RECYCLE: int = 3600
 
-    # Celery
-    CELERY_BROKER_URL: str
-    CELERY_RESULT_BACKEND: str
+    # SQS Configuration (Entrega 4 - replaces Celery/Redis)
+    SQS_QUEUE_URL: str = ""  # Main processing queue URL
+    SQS_DLQ_URL: str = ""  # Dead Letter Queue URL
 
     # JWT Security
     SECRET_KEY: str

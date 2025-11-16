@@ -1,15 +1,16 @@
 """Public endpoints for voting and rankings"""
 
-from fastapi import APIRouter, Depends, status, HTTPException, Query
-from sqlalchemy.orm import Session
-from sqlalchemy import func, desc
-from typing import List, Optional
 import math
+from typing import List, Optional
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import desc, func
+from sqlalchemy.orm import Session
 
 from app.core.security import get_current_user
 from app.db import models
 from app.db.database import get_db
-from app.schemas.vote import VoteResponse, PublicVideoResponse, RankingResponse
+from app.schemas.vote import PublicVideoResponse, RankingResponse, VoteResponse
 
 router = APIRouter()
 

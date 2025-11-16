@@ -11,7 +11,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
-from app.api.routes import auth, health, videos, public
+from app.api.routes import auth, health, public, videos
 from app.core.config import settings
 from app.db.base import Base
 from app.db.database import engine
