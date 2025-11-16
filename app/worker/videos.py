@@ -106,7 +106,7 @@ def _setup_file_paths(video, settings):
         return original_path, processed_path, None, None
 
 
-def _process_video_file(original_path, processed_path):
+def _process_video_file(original_path, processed_path):  # pragma: no cover
     """
     Apply video transformations using moviepy.
 

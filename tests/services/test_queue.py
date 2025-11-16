@@ -386,3 +386,25 @@ class TestSQSServiceErrorHandling:
 
         with pytest.raises(ClientError):
             sqs_service.receive_messages()
+
+    def test_get_queue_attributes_error(self, sqs_service, monkeypatch):
+        """Test error handling when get_queue_attributes fails"""
+
+        def mock_get_attributes(*args, **kwargs):
+            raise ClientError({"Error": {"Code": "ServiceUnavailable"}}, "GetQueueAttributes")
+
+        monkeypatch.setattr(sqs_service.sqs, "get_queue_attributes", mock_get_attributes)
+
+        result = sqs_service.get_queue_attributes()
+        assert result == {}
+
+    def test_get_dlq_messages_count_error(self, sqs_service, monkeypatch):
+        """Test error handling when get_dlq_messages_count fails"""
+
+        def mock_get_attributes(*args, **kwargs):
+            raise ClientError({"Error": {"Code": "ServiceUnavailable"}}, "GetQueueAttributes")
+
+        monkeypatch.setattr(sqs_service.sqs, "get_queue_attributes", mock_get_attributes)
+
+        result = sqs_service.get_dlq_messages_count()
+        assert result == 0

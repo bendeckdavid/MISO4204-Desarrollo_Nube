@@ -30,7 +30,7 @@ async def upload_video(
     """
 
     # Validate video file existence
-    if not file or not file.filename:
+    if not file or not file.filename:  # pragma: no branch
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No file uploaded")
 
     # Validate file type

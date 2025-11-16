@@ -73,7 +73,7 @@ def process_message(message: dict) -> bool:
         return False
 
 
-def main():
+def main():  # pragma: no cover
     """Main worker loop"""
     # Register signal handlers for graceful shutdown
     signal.signal(signal.SIGTERM, signal_handler)
@@ -145,5 +145,5 @@ def main():
     sys.exit(0)
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     main()

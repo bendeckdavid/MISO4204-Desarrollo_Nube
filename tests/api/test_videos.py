@@ -12,12 +12,12 @@ from app.db import models
 class TestVideoUpload:
     """Tests for video upload endpoint"""
 
-    @patch("app.api.routes.videos.process_video")
+    @patch("app.api.routes.videos.sqs_service")
     @patch("app.api.routes.videos.storage")
     def test_upload_video_success(
         self,
         mock_storage,
-        mock_process_video,
+        mock_sqs_service,
         client: TestClient,
         db,
     ):
@@ -25,6 +25,8 @@ class TestVideoUpload:
         # Mock storage operations
         mock_storage.upload_file.return_value = "uploads/test_video.mp4"
         mock_storage.file_exists.return_value = True
+        # Mock SQS service
+        mock_sqs_service.send_message.return_value = None
 
         # Create and login user
         user = models.User(
@@ -148,12 +150,12 @@ class TestVideoUpload:
             status.HTTP_422_UNPROCESSABLE_ENTITY,
         ]
 
-    @patch("app.api.routes.videos.process_video")
+    @patch("app.api.routes.videos.sqs_service")
     @patch("app.api.routes.videos.storage")
     def test_upload_video_file_save_error(
         self,
         mock_storage,
-        mock_process_video,
+        mock_sqs_service,
         client: TestClient,
         db,
     ):
@@ -161,6 +163,8 @@ class TestVideoUpload:
         # Mock storage operations to simulate file not being saved
         mock_storage.upload_file.return_value = "uploads/test_video.mp4"
         mock_storage.file_exists.return_value = False  # File doesn't exist after save
+        # Mock SQS service
+        mock_sqs_service.send_message.return_value = None
 
         user = models.User(
             first_name="Juan",
@@ -216,14 +220,14 @@ class TestVideoUpload:
         # FastAPI returns 422 for empty filenames
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
-    @patch("app.api.routes.videos.process_video")
+    @patch("app.api.routes.videos.sqs_service")
     @patch("app.api.routes.videos.storage")
     @patch("app.api.routes.videos.settings")
     def test_upload_video_file_size_exceeds_limit(
         self,
         mock_settings,
         mock_storage,
-        mock_process_video,
+        mock_sqs_service,
         client: TestClient,
         db,
     ):
@@ -233,6 +237,8 @@ class TestVideoUpload:
         mock_settings.STORAGE_BACKEND = "local"
         mock_settings.UPLOAD_BASE_DIR = "/uploads"
         mock_settings.PROCESSED_BASE_DIR = "/processed"
+        # Mock SQS service
+        mock_sqs_service.send_message.return_value = None
 
         user = models.User(
             first_name="Juan",
@@ -263,14 +269,14 @@ class TestVideoUpload:
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert "exceeds limit" in response.json()["detail"]
 
-    @patch("app.api.routes.videos.process_video")
+    @patch("app.api.routes.videos.sqs_service")
     @patch("app.api.routes.videos.storage")
     @patch("app.api.routes.videos.settings")
     def test_upload_video_s3_storage_backend(
         self,
         mock_settings,
         mock_storage,
-        mock_process_video,
+        mock_sqs_service,
         client: TestClient,
         db,
     ):
@@ -284,6 +290,8 @@ class TestVideoUpload:
         # Mock storage operations
         mock_storage.upload_file.return_value = "uploads/test.mp4"
         mock_storage.file_exists.return_value = True
+        # Mock SQS service
+        mock_sqs_service.send_message.return_value = None
 
         user = models.User(
             first_name="Juan",
