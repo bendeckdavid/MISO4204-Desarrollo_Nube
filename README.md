@@ -116,10 +116,10 @@ API para la gestión de videos de artistas emergentes con sistema de votación y
 
 | Documento | Descripción |
 |-----------|-------------|
-| **[Arquitectura AWS SQS](docs/Entrega_4/arquitectura_aws_sqs.md)** | Arquitectura escalable con SQS:<br>• Amazon SQS para procesamiento asíncrono<br>• Worker Auto Scaling Group (1-3 instancias)<br>• Dead Letter Queue para reintentos<br>• Application Load Balancer<br>• Amazon S3 para videos<br>• Multi-AZ para alta disponibilidad<br>• Diagramas de flujo y arquitectura |
+| **[Arquitectura AWS SQS](docs/Entrega_4/arquitectura_aws.md)** | Arquitectura escalable con SQS:<br>• Amazon SQS para procesamiento asíncrono<br>• Worker Auto Scaling Group (1-3 instancias)<br>• Dead Letter Queue para reintentos<br>• Application Load Balancer<br>• Amazon S3 para videos<br>• Multi-AZ para alta disponibilidad<br>• Diagramas de flujo y arquitectura |
 | **[Pruebas de Carga](capacity-planning/pruebas_de_carga_entrega4.md)** | Pruebas de capacidad con k6 y scripts bash:<br>• **Escenario 1:** Capa Web - Validación de capacidad con SQS<br>• **Escenario 2:** Worker Auto Scaling - Escalado 1→3 workers<br>• Análisis de Auto Scaling bajo carga<br>• Comparación con Entrega 3<br>• Métricas de profundidad de cola SQS<br>• Recomendaciones de escalabilidad |
-| **[Guía de Despliegue CloudFormation](docs/Entrega_4/deployment/README.md)** | Despliegue automatizado con CloudFormation:<br>• Stack con SQS y Worker ASG<br>• Configuración de Auto Scaling basado en queue<br>• Variables de entorno y secretos<br>• Troubleshooting y validación<br>• Scripts de apoyo para pruebas |
-| **[Reporte SonarQube](reporte_sonarqube.md)** | Análisis de calidad actualizado:<br>• Quality Gate: **PASSED**<br>• 0 bugs, 0 vulnerabilidades<br>• Coverage: **99.9%** (753/753 líneas)<br>• 152 tests pasando<br>• Issues de complejidad cognitiva resueltos<br>• Código refactorizado para mejor mantenibilidad |
+| **[Guía de Despliegue CloudFormation](docs/Entrega_4/aws_deployment.md)** | Despliegue automatizado con CloudFormation:<br>• Stack con SQS y Worker ASG<br>• Configuración de Auto Scaling basado en queue<br>• Variables de entorno y secretos<br>• Troubleshooting y validación<br>• Scripts de apoyo para pruebas |
+| **[Reporte SonarQube](docs/Entrega_4/reporte_sonarqube.md)** | Análisis de calidad actualizado:<br>• Quality Gate: **PASSED**<br>• 0 bugs, 0 vulnerabilidades<br>• Coverage: **99.9%** (753/753 líneas)<br>• 152 tests pasando<br>• Issues de complejidad cognitiva resueltos<br>• Código refactorizado para mejor mantenibilidad |
 
 ### Infraestructura como Código
 
@@ -666,17 +666,6 @@ tests/
     └── test_videos_extended.py      # Tests extended (5 tests)
 ```
 
----
-
-## 🔗 Enlaces Útiles
-
-- [Documentación Interactiva (Swagger)](http://localhost:8080/docs)
-- [Documentación Alternativa (ReDoc)](http://localhost:8080/redoc)
-- [FastAPI Documentation](https://fastapi.tiangolo.com/)
-- [AWS CloudFormation Documentation](https://docs.aws.amazon.com/cloudformation/)
-- [Amazon SQS Documentation](https://docs.aws.amazon.com/sqs/)
-- [k6 Load Testing](https://k6.io/docs/)
-- [SonarQube](https://www.sonarqube.org/)
 
 ---
 
@@ -703,13 +692,6 @@ Proyecto desarrollado para el curso **MISO4204 - Desarrollo en la Nube**
 
 ### Configuración de Cola de Mensajes
 
-En **local** (Docker):
-```bash
-# Se usa Redis por simplicidad
-CELERY_BROKER_URL=redis://redis:6379/0
-```
-
-En **AWS**:
 ```bash
 # Se usa Amazon SQS
 SQS_QUEUE_URL=https://sqs.us-east-1.amazonaws.com/xxx/anb-video-processing-queue
