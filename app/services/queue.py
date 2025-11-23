@@ -2,6 +2,7 @@
 
 import json
 import logging
+import os
 from typing import Any, Dict, List, Optional
 
 import boto3
@@ -17,7 +18,22 @@ class SQSService:
 
     def __init__(self):
         """Initialize SQS client and queue configuration"""
-        self.sqs = boto3.client("sqs", region_name=settings.AWS_REGION)
+        # Support LocalStack endpoint
+        endpoint_url = os.getenv("AWS_ENDPOINT_URL")
+        
+        if endpoint_url:
+            # LocalStack mode
+            self.sqs = boto3.client(
+                "sqs",
+                region_name=settings.AWS_REGION,
+                endpoint_url=endpoint_url,
+                aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID", "test"),
+                aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY", "test"),
+            )
+        else:
+            # Production mode - use IAM Role
+            self.sqs = boto3.client("sqs", region_name=settings.AWS_REGION)
+        
         self.queue_url = settings.SQS_QUEUE_URL
         self.dlq_url = settings.SQS_DLQ_URL
 

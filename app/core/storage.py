@@ -100,8 +100,22 @@ class S3Storage(StorageBackend):
     def __init__(self):
         """Initialize S3 client using IAM Role credentials"""
         # Boto3 automatically uses IAM Role from EC2 instance metadata
-        # No need to pass access_key_id or secret_access_key
-        self.s3_client = boto3.client("s3", region_name=settings.AWS_REGION)
+        # For LocalStack, use AWS_ENDPOINT_URL from environment
+        endpoint_url = os.getenv("AWS_ENDPOINT_URL")
+        
+        if endpoint_url:
+            # LocalStack mode
+            self.s3_client = boto3.client(
+                "s3",
+                region_name=settings.AWS_REGION,
+                endpoint_url=endpoint_url,
+                aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID", "test"),
+                aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY", "test"),
+            )
+        else:
+            # Production mode - use IAM Role
+            self.s3_client = boto3.client("s3", region_name=settings.AWS_REGION)
+        
         self.bucket = settings.AWS_S3_BUCKET
 
     def upload_file(self, file_data: bytes, file_path: str) -> str:

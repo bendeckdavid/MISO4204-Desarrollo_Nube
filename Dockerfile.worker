@@ -1,0 +1,27 @@
+FROM python:3.12-slim
+
+# Install system dependencies including ffmpeg for video processing
+RUN apt-get update && \
+    apt-get install -y ffmpeg libpq-dev gcc && \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Install dependencies
+COPY pyproject.toml README.md ./
+
+# Install poetry and dependencies, excluding problematic imageio-ffmpeg (use system ffmpeg)
+RUN pip install poetry && \
+    poetry config virtualenvs.create false && \
+    poetry install --no-root --no-interaction || \
+    (pip install --no-cache-dir $(poetry export -f requirements.txt --without-hashes | grep -v imageio-ffmpeg) && \
+     pip install moviepy --no-deps)
+
+# Copy application
+COPY app/ ./app/
+
+# Set environment to use system ffmpeg
+ENV IMAGEIO_FFMPEG_EXE=/usr/bin/ffmpeg
+
+# Run worker
+CMD ["python", "-m", "app.worker.sqs_worker"]

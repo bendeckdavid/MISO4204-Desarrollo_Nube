@@ -19,6 +19,25 @@ services:
     networks:
       - app_network
 
+  localstack:
+    image: localstack/localstack:latest
+    container_name: fastapi_localstack
+    environment:
+      - SERVICES=s3,sqs
+      - DEBUG=1
+      - DOCKER_HOST=unix:///var/run/docker.sock
+    ports:
+      - "4566:4566"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app_network
+
   redis:
     image: redis:7-alpine
     container_name: fastapi_redis
@@ -46,10 +65,16 @@ services:
       - DB_MAX_OVERFLOW=20
       - DB_POOL_TIMEOUT=30
       - DB_POOL_RECYCLE=3600
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_ENDPOINT_URL=http://localstack:4566
     env_file:
       - .env
     depends_on:
       db:
+        condition: service_healthy
+      localstack:
         condition: service_healthy
       redis:
         condition: service_healthy
@@ -61,14 +86,19 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: fastapi_worker
-    command: celery -A app.worker.celery_app worker --loglevel=info
+    command: python -m app.worker.sqs_worker
     volumes:
       - .:/app
       - media_data:/app/media  # Shared media storage
+    environment:
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - AWS_DEFAULT_REGION=us-east-1
+      - AWS_ENDPOINT_URL=http://localstack:4566
     env_file:
       - .env
     depends_on:
-      - redis
+      - localstack
       - db
       - api
     networks:
