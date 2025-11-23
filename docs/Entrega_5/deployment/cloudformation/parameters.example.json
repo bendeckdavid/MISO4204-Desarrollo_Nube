@@ -1,0 +1,22 @@
+[
+  {
+    "ParameterKey": "ProjectName",
+    "ParameterValue": "anb-video"
+  },
+  {
+    "ParameterKey": "DBPassword",
+    "ParameterValue": "CHANGE_ME_SECURE_PASSWORD"
+  },
+  {
+    "ParameterKey": "SecretKey",
+    "ParameterValue": "CHANGE_ME_64_CHAR_HEX_SECRET_KEY_GENERATE_WITH_OPENSSL"
+  },
+  {
+    "ParameterKey": "GitHubRepo",
+    "ParameterValue": "https://github.com/bendeckdavid/MISO4204-Desarrollo_Nube.git"
+  },
+  {
+    "ParameterKey": "GitHubBranch",
+    "ParameterValue": "main"
+  }
+]
