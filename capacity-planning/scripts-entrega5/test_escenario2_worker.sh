@@ -3,14 +3,13 @@
 ##############################################################################
 # Escenario 2: Worker Auto Scaling basado en profundidad de cola SQS
 #
-# Objetivo: Demostrar que el Worker ASG escala automáticamente de 1 a 3
+# Objetivo: Demostrar que el Worker escala automáticamente de 1 a 3
 # instancias basándose en la profundidad de la cola SQS.
 #
 # Estrategia:
-# 1. Subir 10-15 videos rápidamente para llenar la cola SQS
-# 2. Monitorear la profundidad de cola (ApproximateNumberOfMessagesVisible)
+# 1. Subir 12 videos rápidamente para llenar la cola SQS
+# 2. Monitorear la profundidad de cola usando la consola de AWS
 # 3. Observar el escalado automático del Worker ASG (1 → 2 → 3 workers)
-# 4. Medir tiempos de procesamiento con diferentes cantidades de workers
 ##############################################################################
 
 # Colores para output

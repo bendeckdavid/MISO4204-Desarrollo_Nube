@@ -1,56 +1,56 @@
-# FastAPI Application deployment to AWS ECS Fargate with Auto-Scaling (1-3 containers)
+# Despliegue de la aplicación FastAPI en AWS ECS Fargate con Auto-Scaling (1-3 contenedores)
 
 ---
 
-## Prerequisites
+## Prerrequisitos
 
-Before starting, ensure you have:
+Antes de comenzar, asegúrate de tener:
 
-1. **AWS Academy Lab Session Active**
+1. **Sesión de laboratorio de AWS Academy activa**
 
-   - Log into AWS Academy and start your lab session
-   - Download AWS CLI credentials (click "AWS Details" → "AWS CLI: Show")
-   - Configure credentials in `~/.aws/credentials` under `[default]` profile
+   - Inicia sesión en AWS Academy y empieza tu sesión de laboratorio
+   - Descarga las credenciales del AWS CLI (haz clic en "AWS Details" → "AWS CLI: Show")
+   - Configura las credenciales en `~/.aws/credentials` bajo el perfil `[default]`
 
-2. **Docker Installed and Running**
-
-   ```bash
-   docker --version  # Should show Docker version
-   docker info       # Should connect to Docker daemon
-   ```
-
-3. **AWS CLI Configured**
+2. **Docker instalado y en ejecución**
 
    ```bash
-   aws sts get-caller-identity  # Should return your AWS account details
+   docker --version  # Debe mostrar la versión de Docker
+   docker info       # Debe conectarse al daemon de Docker
    ```
 
-4. **Get Your AWS Account ID**
+3. **AWS CLI configurado**
+
+   ```bash
+   aws sts get-caller-identity  # Debe devolver los detalles de tu cuenta de AWS
+   ```
+
+4. **Obtén tu ID de cuenta de AWS**
 
    ```bash
    export AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-   echo $AWS_ACCOUNT_ID  # Save this for later steps
+   echo $AWS_ACCOUNT_ID  # Guarda esto para pasos posteriores
    ```
 
-5. **Verify LabRole Exists**
+5. **Verifica que exista LabRole**
    ```bash
    aws iam get-role --role-name LabRole
-   # Should return role details with ARN: arn:aws:iam::ACCOUNT_ID:role/LabRole
+   # Debe devolver los detalles del rol con ARN: arn:aws:iam::ACCOUNT_ID:role/LabRole
    ```
 
 ---
 
-## Step 1: Create ECR Repositories and Push Docker Images
+## Paso 1: Crear repositorios ECR y subir imágenes Docker
 
-### 1.1 Create ECR Repositories
+### 1.1 Crear repositorios ECR
 
 ```bash
-# Create repository for web and worker service
+# Crear repositorios para los servicios web y worker
 aws ecr create-repository --repository-name anb-web --region us-east-1 --image-scanning-configuration scanOnPush=true
 aws ecr create-repository --repository-name anb-worker --region us-east-1 --image-scanning-configuration scanOnPush=true
 ```
 
-**Expected Output:**
+**Salida esperada:**
 
 ```json
 {
@@ -62,57 +62,57 @@ aws ecr create-repository --repository-name anb-worker --region us-east-1 --imag
 }
 ```
 
-Save the `repositoryUri` values for both repositories.
+Guarda los valores de `repositoryUri` para ambos repositorios.
 
-### 1.2 Authenticate Docker to ECR
+### 1.2 Autenticar Docker contra ECR
 
 ```bash
-# Get login password and authenticate Docker
+# Obtener la contraseña de login y autenticar Docker
 aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.us-east-1.amazonaws.com
 ```
 
-**Expected Output:** `Login Succeeded`
+**Salida esperada:** `Login Succeeded`
 
-### 1.3 Build and Tag Docker Images
+### 1.3 Construir y etiquetar imágenes Docker
 
 ```bash
-# Navigate to project root
+# Ir a la raíz del proyecto
 cd /Users/oscar/code/4204/MISO4204-Desarrollo_Nube
 
-# Build web service image
+# Construir imagen del servicio web
 docker build -f Dockerfile.web -t anb-web:latest --platform linux/amd64 .
 
-# Build worker service image
+# Construir imagen del servicio worker
 docker build -f Dockerfile.worker -t anb-worker:latest --platform linux/amd64 .
 
-# Tag images for ECR
+# Etiquetar imágenes para ECR
 docker tag anb-web:latest ${AWS_ACCOUNT_ID}.dkr.ecr.us-east-1.amazonaws.com/anb-web:latest
 docker tag anb-worker:latest ${AWS_ACCOUNT_ID}.dkr.ecr.us-east-1.amazonaws.com/anb-worker:latest
 ```
 
-### 1.4 Push Images to ECR
+### 1.4 Subir imágenes a ECR
 
 ```bash
-# Push web and worker service images
+# Subir imágenes de los servicios web y worker
 docker push ${AWS_ACCOUNT_ID}.dkr.ecr.us-east-1.amazonaws.com/anb-web:latest
 docker push ${AWS_ACCOUNT_ID}.dkr.ecr.us-east-1.amazonaws.com/anb-worker:latest
 ```
 
-**Expected Time:** 5-10 minutes (depending on network speed)
+**Tiempo estimado:** 5-10 minutos (según velocidad de red)
 
-**Verify:**
+**Verificar:**
 
 ```bash
-# List images in ECR
+# Listar imágenes en ECR
 aws ecr describe-images --repository-name anb-web --region us-east-1
 aws ecr describe-images --repository-name anb-worker --region us-east-1
 ```
 
 ---
 
-## Step 2: Create Parameters File
+## Paso 2: Crear archivo de parámetros
 
-Create `docs/Entrega_5/deployment/cloudformation/parameters.json`:
+Crea `docs/Entrega_5/deployment/cloudformation/parameters.json`:
 
 ```json
 [
@@ -133,7 +133,7 @@ Create `docs/Entrega_5/deployment/cloudformation/parameters.json`:
 ]
 ```
 
-**Generate SecretKey:**
+**Generar SecretKey:**
 
 ```bash
 openssl rand -hex 32
@@ -141,9 +141,9 @@ openssl rand -hex 32
 
 ---
 
-## Step 3: Deploy CloudFormation Stack to AWS Academy
+## Paso 3: Desplegar el stack de CloudFormation en AWS Academy
 
-### 3.1 Validate Template
+### 3.1 Validar la plantilla
 
 ```bash
 aws cloudformation validate-template \
@@ -151,9 +151,9 @@ aws cloudformation validate-template \
   --region us-east-1
 ```
 
-**Expected:** No errors, returns template description.
+**Esperado:** Sin errores, devuelve la descripción de la plantilla.
 
-### 3.2 Create Stack
+### 3.2 Crear el stack
 
 ```bash
 aws cloudformation create-stack \
@@ -164,7 +164,7 @@ aws cloudformation create-stack \
   --region us-east-1
 ```
 
-**Expected Output:**
+**Salida esperada:**
 
 ```json
 {
@@ -172,79 +172,79 @@ aws cloudformation create-stack \
 }
 ```
 
-### 3.3 Monitor Stack Creation
+### 3.3 Monitorizar la creación del stack
 
 ```bash
-# Watch stack events in real-time
+# Ver eventos del stack en tiempo real
 aws cloudformation describe-stack-events --stack-name anb-video-stack-fargate --region us-east-1 --query 'StackEvents[0:20].[Timestamp,ResourceStatus,ResourceType,ResourceStatusReason]' --output table
 
-# Check overall stack status
+# Comprobar estado general del stack
 aws cloudformation describe-stacks --stack-name anb-video-stack-fargate --region us-east-1 --query 'Stacks[0].StackStatus' --output text
 ```
 
-**Expected Timeline:**
+**Cronograma esperado:**
 
-- VPC/Subnets: 1-2 minutes
-- RDS Database: 5-7 minutes
-- ALB: 2-3 minutes
-- ECS Cluster: 30 seconds
-- ECS Services: 2-3 minutes
-- **Total: 10-15 minutes**
+- VPC/Subnets: 1-2 minutos
+- Base de datos RDS: 5-7 minutos
+- ALB: 2-3 minutos
+- Cluster ECS: 30 segundos
+- Servicios ECS: 2-3 minutos
+- **Total: 10-15 minutos**
 
-**Expected Final Status:** `CREATE_COMPLETE`
+**Estado final esperado:** `CREATE_COMPLETE`
 
-### 3.4 Get ALB Endpoint
+### 3.4 Obtener el endpoint del ALB
 
 ```bash
 aws cloudformation describe-stacks --stack-name anb-video-stack-fargate --region us-east-1 --query 'Stacks[0].Outputs[?OutputKey==`ALBURL`].OutputValue' --output text
 ```
 
-**Save this URL** (e.g., `anb-video-alb-123456789.us-east-1.elb.amazonaws.com`)
+**Guarda esta URL** (por ejemplo, `anb-video-alb-123456789.us-east-1.elb.amazonaws.com`)
 
 ---
 
-## Step 4: Verify Deployment
+## Paso 4: Verificar el despliegue
 
-### 4.1 Check ECS Services
+### 4.1 Comprobar servicios ECS
 
 ```bash
-# Check web service status
+# Estado del servicio web
 aws ecs describe-services --cluster anb-video-cluster --services anb-video-web-service --region us-east-1 --query 'services[0].[serviceName,status,runningCount,desiredCount]'
 
-# Check worker service status
+# Estado del servicio worker
 aws ecs describe-services --cluster anb-video-cluster --services anb-video-worker-service --region us-east-1 --query 'services[0].[serviceName,status,runningCount,desiredCount]'
 ```
 
-**Expected:** `[ "anb-video-web-service", "ACTIVE", 1, 1]` and `[ "anb-video-worker-service", "ACTIVE", 1, 1]`
+**Esperado:** `[ "anb-video-web-service", "ACTIVE", 1, 1]` y `[ "anb-video-worker-service", "ACTIVE", 1, 1]`
 
-### 4.2 Check Task Health
+### 4.2 Comprobar salud de las tareas
 
 ```bash
-# List running tasks
+# Listar tareas en ejecución
 aws ecs list-tasks --cluster anb-video-cluster --region us-east-1
 
-# Describe specific task
+# Describir una tarea específica
 aws ecs describe-tasks --cluster anb-video-cluster --tasks TASK_ARN_HERE --region us-east-1
 ```
 
-### 4.3 Test Health Endpoint
+### 4.3 Probar endpoint de salud
 
 ```bash
-# Get ALB URL from CloudFormation outputs and test health endpoint
+# Obtener URL del ALB desde los outputs de CloudFormation y probar el endpoint de salud
 ALB_URL=$(aws cloudformation describe-stacks --stack-name anb-video-stack-fargate --region us-east-1 --query 'Stacks[0].Outputs[?OutputKey==`ALBURL`].OutputValue' --output text)
 curl ${ALB_URL}/health
 ```
 
-**Expected:**
+**Esperado:**
 
 ```json
 { "status": "healthy", "version": "1.0.0" }
 ```
 
-### 4.4 Test User Registration and Login
+### 4.4 Probar registro y login de usuario
 
 ```bash
-# Register test user
+# Registrar usuario de prueba
 curl -X POST ${ALB_URL}/api/auth/signup \
   -H "Content-Type: application/json" \
   -d '{
@@ -258,7 +258,7 @@ curl -X POST ${ALB_URL}/api/auth/signup \
   }'
 ```
 
-**Expected:**
+**Esperado:**
 
 ```json
 {
@@ -281,7 +281,7 @@ curl -X POST ${ALB_URL}/api/auth/login \
     }'
 ```
 
-**Expected:**
+**Esperado:**
 
 ```json
 {
@@ -291,41 +291,41 @@ curl -X POST ${ALB_URL}/api/auth/login \
 }
 ```
 
-### 4.5 Check CloudWatch Logs
+### 4.5 Ver logs en CloudWatch
 
 ```bash
-# Web service logs
+# Logs del servicio web
 aws logs tail /ecs/anb-video-web --follow --region us-east-1
 
-# Worker service logs
+# Logs del servicio worker
 aws logs tail /ecs/anb-video-worker --follow --region us-east-1
 ```
 
 ---
 
-## Step 5: Test Auto-Scaling Behavior
+## Paso 5: Probar el comportamiento de Auto-Scaling
 
-### 5.1 Create Test Users
+### 5.1 Crear usuarios de prueba
 
 ```bash
-# Use existing script to create test users
+# Usar script existente para crear usuarios de prueba
 bash capacity-planning/scripts-entrega5/setup_crear_usuarios_prueba.sh
 ```
 
-This creates `test1@anb.com` to `test5@anb.com` with password `Test1234!`
+Esto crea `test1@anb.com` hasta `test5@anb.com` con contraseña `Test1234!`
 
-### 5.2 Test Web Service CPU Scaling
+### 5.2 Probar escalado por CPU del servicio web
 
-Use k6 load testing tool:
+Usa la herramienta de pruebas de carga k6:
 
 ```bash
-# Install k6 if not already installed (macOS)
+# Instalar k6 si no está instalado (macOS)
 brew install k6
 
-# Update ALB URL in test script
+# Actualizar la URL del ALB en el script de prueba
 export ALB_URL="http://anb-video-alb-1627965266.us-east-1.elb.amazonaws.com"
 
-# Run load tests
+# Ejecutar pruebas de carga
 k6 run capacity-planning/scripts-entrega5/test_escenario1_web.js \
   --vus 50 \
   --duration 5m
@@ -333,10 +333,10 @@ k6 run capacity-planning/scripts-entrega5/test_escenario1_web.js \
 bash capacity-planning/scripts-entrega5/test_escenario2_worker.sh
 ```
 
-### 5.3 Test Worker Service SQS Scaling
+### 5.3 Probar escalado por SQS del servicio worker
 
 ```bash
-# Upload multiple videos to fill SQS queue
+# Subir múltiples videos para llenar la cola SQS
 python3 capacity-planning/scripts-entrega5/upload_videos_python.py \
   --url ${ALB_URL} \
   --user test1@anb.com \
@@ -346,20 +346,20 @@ python3 capacity-planning/scripts-entrega5/upload_videos_python.py \
 
 ---
 
-## Cost Estimate (AWS Academy - Free Tier)
+## Estimación de costos (AWS Academy - Free Tier)
 
-AWS Academy provides credits, but be aware of resource usage:
+AWS Academy proporciona créditos, pero ten en cuenta el uso de recursos:
 
-| Resource             | Count            | Usage               | Estimated Cost    |
-| -------------------- | ---------------- | ------------------- | ----------------- |
-| ECS Fargate (Web)    | 1-3 tasks        | 0.5 vCPU, 1 GB      | $15-45/month      |
-| ECS Fargate (Worker) | 1-3 tasks        | 1 vCPU, 3 GB        | $36-108/month     |
-| RDS PostgreSQL       | 1 instance       | db.t3.micro         | $12/month         |
-| ALB                  | 1                | Standard            | $16/month         |
-| S3                   | 1 bucket         | Storage + requests  | $1-5/month        |
-| SQS                  | 2 queues         | Requests            | $0.40/month       |
-| ECR                  | 2 repos          | Storage             | $1/month          |
-| CloudWatch Logs      | Multiple streams | Storage + ingestion | $5-10/month       |
-| **Total**            |                  |                     | **$86-197/month** |
+| Recurso              | Cantidad         | Uso                 | Costo estimado     |
+| -------------------- | ---------------- | ------------------- | ------------------ |
+| ECS Fargate (Web)    | 1-3 tareas       | 0.5 vCPU, 1 GB      | $15-45/mes         |
+| ECS Fargate (Worker) | 1-3 tareas       | 1 vCPU, 3 GB        | $36-108/mes        |
+| RDS PostgreSQL       | 1 instancia      | db.t3.micro         | $12/mes            |
+| ALB                  | 1                 | Estándar            | $16/mes            |
+| S3                   | 1 bucket         | Almacenamiento + req| $1-5/mes           |
+| SQS                  | 2 colas          | Solicitudes         | $0.40/mes          |
+| ECR                  | 2 repos          | Almacenamiento      | $1/mes             |
+| CloudWatch Logs      | Múltiples flujos | Almacenamiento + ing| $5-10/mes          |
+| **Total**            |                  |                     | **$86-197/mes**    |
 
 ---
