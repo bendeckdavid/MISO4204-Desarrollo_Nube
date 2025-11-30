@@ -331,66 +331,6 @@ poetry run black app tests
 poetry run isort app tests
 ```
 
-### Cobertura de Tests
-
-- **Cobertura actual:** 99.9% (753/753 líneas)
-- **Tests totales:** 152 tests pasando
-- **Suites:**
-  - Autenticación (15 tests)
-  - Videos API (35 tests)
-  - Videos Extended (2 tests)
-  - Endpoints Públicos (10 tests)
-  - Health Check (2 tests)
-  - Security (6 tests)
-  - Storage/S3 (33 tests)
-  - Database (7 tests)
-  - Schemas (4 tests)
-  - Queue/SQS (24 tests) ✨
-  - Worker SQS (6 tests) ✨
-  - Worker Videos (19 tests) ✨
-
----
-
-## 📊 Resultados de Pruebas de Carga (AWS con SQS)
-
-### Escenario 1: Capa Web con SQS
-
-- **Arquitectura:** SQS en lugar de Redis
-- **Usuarios concurrentes:** Hasta 150 VUs
-- **Resultado:** Mantiene capacidad similar a Entrega 3
-- **Mejora:** Mayor estabilidad al usar servicio administrado (SQS)
-- **Tasa de éxito:** >80%
-
-**Conclusión:** La migración a SQS no afecta negativamente el rendimiento de la capa web y mejora la resiliencia del sistema.
-
-### Escenario 2: Worker Auto Scaling ✨
-
-- **Estado inicial:** 1 worker
-- **Videos subidos:** 12 videos (genera 12 mensajes en SQS)
-- **Profundidad máxima de cola:** 12 mensajes
-- **Escalado observado:** 1 → 2 → 3 workers
-- **Target tracking:** 5 mensajes/worker
-- **Tiempo de escalado:** ~2-3 minutos (cooldown de 300s)
-- **Resultado:** **Auto Scaling EXITOSO** ✅
-
-**Métricas clave:**
-- Threshold alcanzado: 12 msgs > 5 msgs/worker
-- Workers escalaron correctamente de 1 a 3
-- Cola procesada completamente
-- Scale-down automático a 1 worker al terminar
-
-**Conclusión:** El Worker Auto Scaling basado en profundidad de cola SQS funciona correctamente y permite procesar cargas variables de trabajo de forma eficiente.
-
-### Comparación con Entrega 3
-
-| Métrica | Entrega 3 (Redis) | Entrega 4 (SQS) | Mejora |
-|---------|-------------------|-----------------|--------|
-| Cola de mensajes | Redis (single instance) | Amazon SQS (HA) | **Managed service** |
-| Escalabilidad workers | Manual/fija | Automática (1-3) | **Dinámica** |
-| Resiliencia | SPOF | DLQ + 3 reintentos | **Mayor** |
-| Disponibilidad | Single-AZ | Multi-AZ | **Alta** |
-| Capacidad web | 150 VUs | 150+ VUs | **Mantenida** |
-
 ---
 
 ## 🏗️ Stack Tecnológico
@@ -415,9 +355,8 @@ poetry run isort app tests
 
 ### Infraestructura AWS
 - **CloudFormation** - Infraestructura como código
-- **EC2** t3.small - Instancias de cómputo
+- **ECS** Autoescalado para web y worker
 - **Application Load Balancer** - Distribución de carga
-- **Auto Scaling Group** - Escalado automático (Web + Workers)
 - **Amazon SQS** - Cola de mensajes ✨
 - **Dead Letter Queue** - Manejo de errores ✨
 - **VPC** - Red privada virtual
@@ -432,6 +371,22 @@ poetry run isort app tests
 - **flake8, black, isort** - Linters y formateo
 
 ---
+
+## 👥 Equipo
+
+Proyecto desarrollado para el curso **MISO4204 - Desarrollo en la Nube**
+Grupo #12
+**Universidad de los Andes**
+
+## 📖 Documentación de Entrega 5
+
+### Documentación Principal
+
+| Documento | Descripción |
+|-----------|-------------|
+| **[Arquitectura AWS ECS Fargate](docs/Entrega_5/arquitectura-aws.md)** | Arquitectura escalable con Fargate y SQS:<br>• Autoescalado: Web por CPU (70%) y Workers por profundidad de cola (target 5)<br>• SQS con DLQ<br>• RDS PostgreSQL y S3 para almacenamiento<br>• Diagrama de arquitectura<br>• Sección de “Comportamiento bajo carga”<br>• Comparativa Entrega 4 vs 5 |
+| **[Guía de Despliegue (CloudFormation)](docs/Entrega_5/deployment/deployment-instructions.md)** | Despliegue en Fargate:<br>• Generación de imágenes Docker (`linux/amd64`) y carga a ECR<br>• Template `infrastructure-fargate.yaml`<br>• Creación del stack y validación de servicios<br>• Comandos para verificación (ECS, logs) |
+| **[Pruebas de Carga – Entrega 5](docs/Entrega_5/pruebas_de_carga_entrega5.md)** | Evidencia de escalado: <br>• Crecimiento y procesamiento de SQS<br>• Escalado 1→3 workers y ajuste 1→2 web<br>• Capturas de consola de AWS evidanciando la operación bajo carga. |
 
 ## 📂 Estructura del Proyecto
 
@@ -503,12 +458,14 @@ MISO4204-Desarrollo_Nube/
 │   ├── Entrega_1/                          # Entrega 1 (Docker local)
 │   ├── Entrega_2/                          # Entrega 2 (3 EC2 + NFS)
 │   ├── Entrega_3/                          # Entrega 3 (Auto Scaling + S3)
-│   └── Entrega_4/                          # ✅ Entrega 4 (SQS + Worker ASG)
-│       ├── arquitectura_aws_sqs.md         # Arquitectura con SQS
+│   └── Entrega_4/                          # Entrega 4 (SQS + Worker ASG)
+│   └── Entrega_5/                          # ✅ Entrega 5 (ECS + Fargate)
+│       ├── arquitectura-aws.md
+│       └── images/                         # Capturas de pantalla de AWS
 │       └── deployment/
-│           ├── README.md                   # Guía de despliegue
 │           └── cloudformation/
-│               └── infrastructure.yaml     # 🔧 Template CloudFormation con SQS
+│               └── infrastructure.yaml-fargate  # 🔧 Template CloudFormation
+│           └── deployment-instructions.md     # Paso a paso para el despliegue en AWS.
 │
 ├── capacity-planning/                      # 📊 Pruebas de carga
 │   ├── pruebas_de_carga_entrega4.md       # 🆕 Reporte completo de pruebas
@@ -540,189 +497,45 @@ MISO4204-Desarrollo_Nube/
 └── README.md                               # Este archivo
 ```
 
-### Módulos Clave de Entrega 4 ✨
-
-#### `app/services/queue.py` - Servicio SQS
-```python
-class SQSService:
-    - send_message()           # Envía mensaje a cola SQS
-    - receive_messages()       # Recibe con long polling (20s)
-    - delete_message()         # Elimina mensaje procesado
-    - change_visibility()      # Extiende timeout de visibilidad
-    - get_queue_attributes()   # Obtiene métricas de cola
-    - get_dlq_messages_count() # Cuenta mensajes en DLQ
-```
-
-#### `app/worker/sqs_worker.py` - Worker con SQS
-```python
-def main():
-    1. Registra signal handlers (SIGTERM, SIGINT)
-    2. Inicia long polling en SQS (20s)
-    3. Procesa mensajes de video:
-       - Descarga de S3
-       - Procesamiento con moviepy
-       - Upload de procesado a S3
-       - Actualiza PostgreSQL
-    4. Elimina mensaje de cola si exitoso
-    5. Reintenta automáticamente (max 3 veces)
-    6. Envía a DLQ si falla definitivamente
-```
-
-#### `app/api/routes/videos.py` - Upload con SQS
-```python
-@router.post("/upload")
-def upload_video(...):
-    1. Valida archivo y usuario
-    2. Genera UUID para video
-    3. Sube a S3 (original)
-    4. Crea registro en PostgreSQL
-    5. Envía mensaje a SQS con:
-       - video_id
-       - user_id
-       - file_path
-    6. Retorna inmediatamente (async)
-```
-
-#### `docs/Entrega_4/deployment/cloudformation/infrastructure.yaml`
-```yaml
-Resources:
-  # Networking
-  - VPC (10.0.0.0/16)
-  - 2 Subnets públicas (Multi-AZ)
-
-  # SQS (NEW!)
-  - VideoProcessingQueue (main queue)
-  - VideoProcessingDLQ (dead letter queue)
-
-  # Web Layer
-  - Application Load Balancer
-  - Web Auto Scaling Group (1-3)
-
-  # Worker Layer (NEW!)
-  - Worker Launch Template
-  - Worker Auto Scaling Group (1-3)
-  - Target Tracking Scaling Policy
-    Target: 5 mensajes/worker
-
-  # Storage & Database
-  - RDS PostgreSQL (db.t3.micro)
-  - S3 Bucket (videos)
-
-  # Security & Monitoring
-  - Security Groups
-  - IAM Roles (EC2 → SQS, S3)
-  - CloudWatch Logs & Metrics
-```
-
----
-
-## 📁 Ubicación de Archivos de Entrega 4
-
-### Documentación
-
-```
-docs/Entrega_4/
-├── arquitectura_aws_sqs.md              # Arquitectura con SQS
-└── deployment/
-    ├── README.md                        # Guía de despliegue
-    └── cloudformation/
-        └── infrastructure.yaml          # Template con SQS + Worker ASG
-```
-
-### Pruebas de Carga
-
-```
-capacity-planning/
-├── pruebas_de_carga_entrega4.md        # Reporte completo
-├── scripts-entrega4/
-│   ├── README.md                        # Guía de scripts
-│   ├── setup_crear_usuarios_prueba.sh   # Setup usuarios (test1-5@anb.com)
-│   ├── test_escenario1_capa_web.js     # Test k6 capa web
-│   ├── test_escenario2_worker_autoscaling.sh # Test Worker ASG
-│   └── upload_videos_python.py         # Script Python uploads
-└── results-entrega4/
-    └── [resultados de pruebas]
-```
-
-### Código Fuente SQS
-
-```
-app/
-├── api/routes/videos.py     # Upload con SQS
-├── services/queue.py        # Servicio SQS
-└── worker/
-    ├── sqs_worker.py        # Worker con long polling
-    └── videos.py            # Procesamiento de videos
-```
-
-### Tests SQS
-
-```
-tests/
-├── services/test_queue.py           # Tests SQS service (24 tests)
-└── worker/
-    ├── test_sqs_worker.py           # Tests worker SQS (6 tests)
-    ├── test_videos.py               # Tests procesamiento (14 tests)
-    └── test_videos_extended.py      # Tests extended (5 tests)
-```
-
-
----
-
-## 👥 Equipo
-
-Proyecto desarrollado para el curso **MISO4204 - Desarrollo en la Nube**
-**Universidad de los Andes**
-
----
-
-## 📄 Notas Importantes
-
-### Diferencias entre Local y AWS
-
-| Aspecto | Local (Docker) | AWS (Producción) |
-|---------|----------------|------------------|
-| Cola de mensajes | Redis (simplificado) | Amazon SQS + DLQ |
-| Storage | Volúmenes Docker | Amazon S3 |
-| Database | PostgreSQL container | Amazon RDS |
-| Scaling Web | No | Auto Scaling Group (1-3) |
-| Scaling Workers | No | Auto Scaling Group (1-3) basado en SQS |
-| Load Balancer | Nginx local | Application Load Balancer |
-| Networking | Bridge network | VPC Multi-AZ |
-
-### Configuración de Cola de Mensajes
-
-```bash
-# Se usa Amazon SQS
-SQS_QUEUE_URL=https://sqs.us-east-1.amazonaws.com/xxx/anb-video-processing-queue
-SQS_DLQ_URL=https://sqs.us-east-1.amazonaws.com/xxx/anb-video-processing-dlq
-AWS_REGION=us-east-1
-```
-
 ### Flujo de Procesamiento en Entrega 4
 
-1. **Usuario sube video** → API Web
+1. **Usuario sube video** → API Web + ECS
 2. **API guarda en S3** → Amazon S3
 3. **API envía mensaje** → Amazon SQS Queue
 4. **Worker recibe mensaje** → Long polling (20s)
-5. **Worker procesa video** → moviepy + S3
+5. **Worker procesa video** → moviepy + S3 + ECS
 6. **Worker elimina mensaje** → SQS (si exitoso)
 7. **Si falla** → Reintenta hasta 3 veces
 8. **Si falla definitivamente** → Dead Letter Queue
 
-### Worker Auto Scaling
+---
 
-El Worker ASG escala automáticamente basándose en la profundidad de cola SQS:
+### Infraestructura como Código
 
-- **Target:** 5 mensajes por worker
-- **Min:** 1 worker
-- **Max:** 3 workers
-- **Cooldown:** 300 segundos (5 minutos)
+- **[infrastructure-fargate.yaml](docs/Entrega_5/deployment/cloudformation/infrastructure-fargate.yaml)** – Template CloudFormation con:
+  - VPC Multi-AZ y Security Groups
+  - Application Load Balancer (HTTP/HTTPS)
+  - ECS Cluster Fargate
+  - Servicios ECS:
+    - `anb-video-web-service` (Target Tracking CPU 70%) – 1–2 tareas
+    - `anb-video-worker-service` (Target: 5 msgs visibles) – 1–3 tareas
+  - Amazon SQS + Dead Letter Queue
+  - Amazon RDS PostgreSQL y Amazon S3
+  - CloudWatch Logs y métricas (CPU, SQS depth)
 
-**Ejemplo:**
-- 0-5 mensajes → 1 worker
-- 6-10 mensajes → 2 workers
-- 11-15 mensajes → 3 workers
-- 16+ mensajes → 3 workers (máximo)
+---
+
+### Scripts de Pruebas de Carga
+
+Para generar carga y disparar el autoescalado en Entrega 5 se reutilizan los scripts de Entrega 4 ubicados en [`capacity-planning/scripts-entrega4/`](capacity-planning/scripts-entrega4/):
+
+| Script | Descripción |
+|--------|-------------|
+| **[setup_crear_usuarios_prueba.sh](capacity-planning/scripts-entrega4/setup_crear_usuarios_prueba.sh)** | Crea 5 usuarios de prueba (test1-5@anb.com) |
+| **[test_escenario1_capa_web.js](capacity-planning/scripts-entrega4/test_escenario1_capa_web.js)** | Genera tráfico HTTP para la capa web |
+| **[test_escenario2_worker_autoscaling.sh](capacity-planning/scripts-entrega4/test_escenario2_worker_autoscaling.sh)** | Encola videos para provocar escalado de workers |
+| **[upload_videos_python.py](capacity-planning/scripts-entrega4/upload_videos_python.py)** | Carga múltiple de videos hacia la API |
+
+> La evidencia y análisis se documentan en `docs/Entrega_5/pruebas_de_carga_entrega5.md` y en la sección “Comportamiento Bajo Carga (Evidencia)” del documento de arquitectura.
 
 ---
