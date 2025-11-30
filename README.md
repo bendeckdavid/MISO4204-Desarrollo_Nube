@@ -15,137 +15,22 @@ API para la gestión de videos de artistas emergentes con sistema de votación y
 
 ---
 
-## 📊 Arquitectura de Entrega 4
-
-### Arquitectura Escalable con Amazon SQS y Worker Auto Scaling
-
-```
-                         Internet
-                             ↓
-                 ┌───────────────────────┐
-                 │ Application Load      │
-                 │ Balancer (ALB)        │
-                 └───────────┬───────────┘
-                             │
-             ┌───────────────┼───────────────┐
-             │    Auto Scaling Group         │
-             │  (1-3 instancias t3.small)    │
-             │                               │
-             │  ┌──────┐  ┌──────┐  ┌──────┐│
-             │  │ Web  │  │ Web  │  │ Web  ││
-             │  │  API │  │  API │  │  API ││
-             │  └──┬───┘  └──┬───┘  └──┬───┘│
-             └─────┼─────────┼─────────┼─────┘
-                   │         │         │
-                   └─────────┼─────────┘
-                             │
-                   ┌─────────▼─────────┐
-                   │   Amazon SQS      │
-                   │ Processing Queue  │
-                   └─────────┬─────────┘
-                             │
-                   ┌─────────▼─────────┐
-                   │ Dead Letter Queue │
-                   │      (DLQ)        │
-                   └───────────────────┘
-                             │
-             ┌───────────────▼───────────────┐
-             │  Worker Auto Scaling Group    │
-             │  (1-3 instancias t3.small)    │
-             │  Target: 5 msgs/worker        │
-             │                               │
-             │  ┌──────┐  ┌──────┐  ┌──────┐│
-             │  │Worker│  │Worker│  │Worker││
-             │  │ SQS  │  │ SQS  │  │ SQS  ││
-             │  └──┬───┘  └──┬───┘  └──┬───┘│
-             └─────┼─────────┼─────────┼─────┘
-                   │         │         │
-                   └─────────┼─────────┘
-                             │
-         ┌───────────────────┼───────────────┐
-         │                   ↓               │
-         │      ┌─────────┐    ┌──────────┐ │
-         │      │   RDS   │    │ S3 Bucket│ │
-         │      │Postgres │    │  Videos  │ │
-         │      └─────────┘    └──────────┘ │
-         └─────────────────────────────────────┘
-```
-
 ### Componentes Principales
 
 | Componente | Descripción | Tipo de Instancia |
 |------------|-------------|-------------------|
 | **Application Load Balancer** | Distribuye tráfico HTTP/HTTPS entre instancias web | - |
-| **Web Auto Scaling Group** | Escala automáticamente de 1 a 3 instancias según CPU | t3.small (Multi-AZ) |
-| **Web Servers** | FastAPI + Gunicorn + Nginx | t3.small |
+| **Web Servers** | FastAPI + Gunicorn + Nginx | Autoescalado en ECS |
 | **Amazon SQS** | Cola de mensajes administrada para procesamiento asíncrono | Managed Service ✨ |
 | **Dead Letter Queue (DLQ)** | Cola para mensajes fallidos (max 3 intentos) | Managed Service |
-| **Worker Auto Scaling Group** | Escala de 1 a 3 workers según profundidad de cola SQS | t3.small (Multi-AZ) ✨ |
-| **SQS Workers** | Procesamiento de videos con moviepy | t3.small |
+| **SQS Workers** | Procesamiento de videos con moviepy | Autoescalado en ECS |
 | **Amazon RDS** | PostgreSQL 16 administrado | db.t3.micro |
 | **Amazon S3** | Almacenamiento escalable para videos | - |
 | **VPC Multi-AZ** | Red privada en 2 zonas de disponibilidad | 10.0.0.0/16 |
 
-### Mejoras vs Entregas Anteriores
+### Novedades de Entrega 5 🆕
 
-| Aspecto | Entrega 3 | Entrega 4 ✅ |
-|---------|-----------|-------------|
-| **Cola de Mensajes** | Redis (single instance) | **Amazon SQS** (managed, HA) |
-| **Workers** | Celery (fixed capacity) | **Worker ASG** (1-3, auto scaling) |
-| **Escalamiento Workers** | Manual | **Automático** (basado en queue depth) |
-| **Resiliencia** | Redis SPOF | SQS + DLQ (3 reintentos) |
-| **Disponibilidad** | Single-AZ | Multi-AZ |
-| **Despliegue** | CloudFormation (IaC) | CloudFormation (IaC) |
-| **Almacenamiento** | Amazon S3 | Amazon S3 |
-| **Capacidad probada** | 150 usuarios concurrentes | **150+ usuarios con mejor procesamiento** |
-
-### Novedades de Entrega 4 🆕
-
-1. **Amazon SQS**: Reemplazo de Redis por cola de mensajes administrada
-2. **Worker Auto Scaling**: Workers escalan automáticamente según profundidad de cola
-3. **Dead Letter Queue**: Manejo robusto de errores con 3 reintentos automáticos
-4. **Long Polling**: 20 segundos para reducir llamadas vacías a SQS
-5. **Graceful Shutdown**: Manejo de señales SIGTERM/SIGINT en workers
-6. **CloudWatch Metrics**: Monitoreo de profundidad de cola y actividad de workers
-
----
-
-## 📖 Documentación de Entrega 4
-
-### Documentación Principal
-
-| Documento | Descripción |
-|-----------|-------------|
-| **[Arquitectura AWS SQS](docs/Entrega_4/arquitectura_aws.md)** | Arquitectura escalable con SQS:<br>• Amazon SQS para procesamiento asíncrono<br>• Worker Auto Scaling Group (1-3 instancias)<br>• Dead Letter Queue para reintentos<br>• Application Load Balancer<br>• Amazon S3 para videos<br>• Multi-AZ para alta disponibilidad<br>• Diagramas de flujo y arquitectura |
-| **[Pruebas de Carga](capacity-planning/pruebas_de_carga_entrega4.md)** | Pruebas de capacidad con k6 y scripts bash:<br>• **Escenario 1:** Capa Web - Validación de capacidad con SQS<br>• **Escenario 2:** Worker Auto Scaling - Escalado 1→3 workers<br>• Análisis de Auto Scaling bajo carga<br>• Comparación con Entrega 3<br>• Métricas de profundidad de cola SQS<br>• Recomendaciones de escalabilidad |
-| **[Guía de Despliegue CloudFormation](docs/Entrega_4/aws_deployment.md)** | Despliegue automatizado con CloudFormation:<br>• Stack con SQS y Worker ASG<br>• Configuración de Auto Scaling basado en queue<br>• Variables de entorno y secretos<br>• Troubleshooting y validación<br>• Scripts de apoyo para pruebas |
-| **[Reporte SonarQube](docs/Entrega_4/reporte_sonarqube.md)** | Análisis de calidad actualizado:<br>• Quality Gate: **PASSED**<br>• 0 bugs, 0 vulnerabilidades<br>• Coverage: **99.9%** (753/753 líneas)<br>• 152 tests pasando<br>• Issues de complejidad cognitiva resueltos<br>• Código refactorizado para mejor mantenibilidad |
-
-### Infraestructura como Código
-
-- **[infrastructure.yaml](docs/Entrega_4/deployment/cloudformation/infrastructure.yaml)** - Template CloudFormation con:
-  - VPC Multi-AZ (10.0.0.0/16)
-  - Application Load Balancer
-  - Web Auto Scaling Group (1-3 instancias)
-  - **Amazon SQS Queue** con DLQ ✨
-  - **Worker Auto Scaling Group** (1-3 instancias) ✨
-  - **Target Tracking Policy** (5 msgs/worker) ✨
-  - Amazon RDS PostgreSQL
-  - S3 Bucket para videos
-  - Security Groups y IAM Roles
-  - CloudWatch Logs y Métricas
-
-### Scripts de Pruebas de Carga
-
-Ubicados en [`capacity-planning/scripts-entrega4/`](capacity-planning/scripts-entrega4/):
-
-| Script | Descripción |
-|--------|-------------|
-| **[setup_crear_usuarios_prueba.sh](capacity-planning/scripts-entrega4/setup_crear_usuarios_prueba.sh)** | Crea 5 usuarios de prueba (test1-5@anb.com) |
-| **[test_escenario1_capa_web.js](capacity-planning/scripts-entrega4/test_escenario1_capa_web.js)** | Test k6 para validar capa web con SQS |
-| **[test_escenario2_worker_autoscaling.sh](capacity-planning/scripts-entrega4/test_escenario2_worker_autoscaling.sh)** | Test bash para demostrar Worker Auto Scaling |
-| **[upload_videos_python.py](capacity-planning/scripts-entrega4/upload_videos_python.py)** | Script Python para subir múltiples videos |
-| **[README.md](capacity-planning/scripts-entrega4/README.md)** | Guía completa de uso de scripts |
+Reemplazo de los grupos de autoescalado de EC2 por contenedores en ECS mediante el uso del servicio administrado de AWS Fargate.
 
 ---
 
@@ -527,15 +412,13 @@ MISO4204-Desarrollo_Nube/
 
 ### Scripts de Pruebas de Carga
 
-Para generar carga y disparar el autoescalado en Entrega 5 se reutilizan los scripts de Entrega 4 ubicados en [`capacity-planning/scripts-entrega4/`](capacity-planning/scripts-entrega4/):
-
 | Script | Descripción |
 |--------|-------------|
-| **[setup_crear_usuarios_prueba.sh](capacity-planning/scripts-entrega4/setup_crear_usuarios_prueba.sh)** | Crea 5 usuarios de prueba (test1-5@anb.com) |
-| **[test_escenario1_capa_web.js](capacity-planning/scripts-entrega4/test_escenario1_capa_web.js)** | Genera tráfico HTTP para la capa web |
-| **[test_escenario2_worker_autoscaling.sh](capacity-planning/scripts-entrega4/test_escenario2_worker_autoscaling.sh)** | Encola videos para provocar escalado de workers |
-| **[upload_videos_python.py](capacity-planning/scripts-entrega4/upload_videos_python.py)** | Carga múltiple de videos hacia la API |
+| **[setup_crear_usuarios_prueba.sh](capacity-planning/scripts-entrega5/setup_crear_usuarios_prueba.sh)** | Crea 5 usuarios de prueba (test1-5@anb.com) |
+| **[test_escenario1_capa_web.js](capacity-planning/scripts-entrega5/test_escenario1_capa_web.js)** | Genera tráfico HTTP para la capa web |
+| **[test_escenario2_worker_autoscaling.sh](capacity-planning/scripts-entrega5/test_escenario2_worker_autoscaling.sh)** | Encola videos para provocar escalado de workers |
+| **[upload_videos_python.py](capacity-planning/scripts-entrega5/upload_videos_python.py)** | Carga múltiple de videos hacia la API |
 
-> La evidencia y análisis se documentan en `docs/Entrega_5/pruebas_de_carga_entrega5.md` y en la sección “Comportamiento Bajo Carga (Evidencia)” del documento de arquitectura.
+> La evidencia y análisis se documentan en `docs/Entrega_5/pruebas_de_carga_entrega5.md` y en la sección “Comportamiento bajo carga (Evidencia)” del documento de arquitectura en `docs/Entrega_5/arquitectura-aws.md`.
 
 ---
