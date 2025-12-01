@@ -9,7 +9,7 @@ API para la gestión de videos de artistas emergentes con sistema de votación y
 
 ## 🎥 Video de Sustentación
 
-**Link del video:** [Ver video en OneDrive](https://uniandes-my.sharepoint.com/:v:/g/personal/o_saraza_uniandes_edu_co/IQDnxFXL5NtzQJ79GgJUBJSfAS7hlRmrhBHIYk0hBOVdXeU?nav=eyJyZWZlcnJhbEluZm8iOnsicmVmZXJyYWxBcHAiOiJPbmVEcml2ZUZvckJ1c2luZXNzIiwicmVmZXJyYWxBcHBQbGF0Zm9ybSI6IldlYiIsInJlZmVycmFsTW9kZSI6InZpZXciLCJyZWZlcnJhbFZpZXciOiJNeUZpbGVzTGlua0NvcHkifX0&e=PwxnRx)
+**Link del video:** [Ver video en OneDrive](https://uniandes-my.sharepoint.com/:v:/g/personal/o_saraza_uniandes_edu_co/IQBFWwkISRhQRIb5Gr2dGKMHATNyFaZaHYJgJfpauxJwKC4?nav=eyJyZWZlcnJhbEluZm8iOnsicmVmZXJyYWxBcHAiOiJPbmVEcml2ZUZvckJ1c2luZXNzIiwicmVmZXJyYWxBcHBQbGF0Zm9ybSI6IldlYiIsInJlZmVycmFsTW9kZSI6InZpZXciLCJyZWZlcnJhbFZpZXciOiJNeUZpbGVzTGlua0NvcHkifX0&e=C2HGEC)
 
 > Video demostrativo del funcionamiento de la aplicación desplegada en AWS con Auto Scaling, Amazon SQS y Worker Auto Scaling basado en profundidad de cola.
 
